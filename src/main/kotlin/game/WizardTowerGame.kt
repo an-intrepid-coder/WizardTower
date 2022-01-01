@@ -7,12 +7,13 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
-import display.LabeledTextDataBundle
+import display.*
 
 enum class OverlayType {
     // todo: Implement overlays
     NONE,
     FACTION,
+    PASSABLE,
     // more to come
 }
 
@@ -167,7 +168,23 @@ class WizardTowerGame {
                     turnAdvanced = true
             }
 
-            // todo: map overlays!
+            // Normal overlay:
+            Key.F1 -> {
+                overlayMode = OverlayType.NONE
+                messageLog.addMessage(Message(turn, "Reset overlay mode.", White))
+            }
+
+            // Actor Faction overlay:
+            Key.F2 -> {
+                overlayMode = OverlayType.FACTION
+                messageLog.addMessage(Message(turn, "Activated Actor Faction overlay mode.", White))
+            }
+
+            // Passable Tiles overlay:
+            Key.F3 -> {
+                overlayMode = OverlayType.PASSABLE
+                messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
+            }
         }
 
         if (moved)
@@ -184,16 +201,40 @@ class WizardTowerGame {
     }
 
     /**
+     * Overlays all the Tiles in the display with their isPassable status.
+     */
+    private fun overlayPassableTiles(): List<List<CellDisplayBundle>> {
+        return tilemap
+            .exportTilesToCompose(camera)
+            .map { row ->
+                row.map { cell ->
+                    tilemap.getTileOrNull(cell.coordinates)
+                        ?.let{ tile ->
+                            CellDisplayBundle(
+                                displayValue = tile.displayValue,
+                                displayColor = when (tile.isPassable) {
+                                    true -> GoGreen
+                                    else -> AlertRed
+                                },
+                                coordinates = tile.coordinates
+                            )
+                        }
+                        ?: cell
+                }
+            }
+    }
+
+    /**
      * Overlays the Actors in play on top of the tiles exported from the Tilemap and sets the
-     * displayTiles variable which is used by ExtremeRogueRacingInterface.
+     * displayTiles variable which is used by the interface.
      */
     private fun overlayActorsOnDisplayTiles() {
-        // Calculate the Fog of War:
+        // Calculate the Field of View:
         tilemap.calculateFieldOfView(getPlayer())
 
         // Grab exported tiles w/ a potential overlay:
         val newTiles = when (overlayMode) {
-            OverlayType.FACTION -> tilemap.exportTilesToCompose(camera) // <-- todo
+            OverlayType.PASSABLE -> overlayPassableTiles()
             else -> tilemap.exportTilesToCompose(camera)
         }
 
@@ -207,7 +248,11 @@ class WizardTowerGame {
                             if (tile.visibleToPlayer)
                                 actors
                                     .firstOrNull { it.coordinates.matches(cell.coordinates) }
-                                    .let { it?.toCellDisplayBundle() ?: cell }
+                                    .let { maybeActor ->
+                                        maybeActor
+                                            ?.toCellDisplayBundle(overlayMode)
+                                            ?: cell
+                                    }
                             else
                                 cell
                         }

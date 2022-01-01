@@ -54,10 +54,13 @@ sealed class Actor(
     }
 
     /**
-     * Returns a CellDisplayBundle corresponding to the given Actor.
+     * Returns a CellDisplayBundle corresponding to the given Actor. Can be modified for overlays.
      */
-    fun toCellDisplayBundle(): CellDisplayBundle {
-        return CellDisplayBundle(displayValue, displayColor, coordinates)
+    fun toCellDisplayBundle(overlayMode: OverlayType): CellDisplayBundle {
+        return if (overlayMode == OverlayType.FACTION)
+            CellDisplayBundle(displayValue, factionColors[maybeFaction]!!, coordinates)
+        else
+            CellDisplayBundle(displayValue, displayColor, coordinates)
     }
 
     /**
