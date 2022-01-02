@@ -31,7 +31,7 @@ fun WizardTowerInterface(
             SideHud(
                 listOf(
                     LabeledTextDataBundle("Turn", game.turn.toString(), White),
-                    LabeledTextDataBundle("Camera", game.camera.printed(), White),
+                    LabeledTextDataBundle("Camera", game.camera.coordinates.printed(), White),
                 ).plus(game.playerDisplayStats)
             )
         }

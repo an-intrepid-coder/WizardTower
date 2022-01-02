@@ -21,12 +21,12 @@ enum class OverlayType {
 class WizardTowerGame {
     // Game Data:
     val tilemap = Tilemap.DebugArena()
-    var camera = Coordinates(tilemap.width / 2, tilemap.height / 2)
+    val camera = Camera(Coordinates(0, 0))
     val actors = mutableListOf<Actor>()
     val messageLog = MessageLog()
 
     // Data to export to the GUI:
-    var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera))
+    var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera.coordinates))
     var currentBackgroundColor by mutableStateOf(tilemap.backgroundColor)
     var overlayMode = OverlayType.NONE
     var displayMessages by mutableStateOf(messageLog.exportMessages())
@@ -205,7 +205,7 @@ class WizardTowerGame {
      */
     private fun overlayPassableTiles(): List<List<CellDisplayBundle>> {
         return tilemap
-            .exportTilesToCompose(camera)
+            .exportTilesToCompose(camera.coordinates)
             .map { row ->
                 row.map { cell ->
                     tilemap.getTileOrNull(cell.coordinates)
@@ -235,7 +235,7 @@ class WizardTowerGame {
         // Grab exported tiles w/ a potential overlay:
         val newTiles = when (overlayMode) {
             OverlayType.PASSABLE -> overlayPassableTiles()
-            else -> tilemap.exportTilesToCompose(camera)
+            else -> tilemap.exportTilesToCompose(camera.coordinates)
         }
 
         // Apply the potential overlay with the Actors on top of that:
@@ -266,7 +266,7 @@ class WizardTowerGame {
      */
     private fun setGui() {
         val player = getPlayer() as Actor.Player
-        camera = player.coordinates
+        camera.snap()
         overlayActorsOnDisplayTiles()
         displayMessages = messageLog.exportMessages()
         playerDisplayStats = player.exportToCompose()
@@ -290,6 +290,7 @@ class WizardTowerGame {
                     .coordinates
             )
         )
+        camera.coupleTo(getPlayer())
         setGui()
     }
 }
