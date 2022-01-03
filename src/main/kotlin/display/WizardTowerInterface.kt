@@ -1,3 +1,5 @@
+package display
+
 import androidx.compose.foundation.background
 import game.WizardTowerGame
 import androidx.compose.foundation.layout.*
@@ -5,13 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import display.*
 
 val displaySpacing = 8.dp
 
 /**
- * The main interface for Wizard Tower. Currently, all action takes place on a single screen with a scrolling
- * camera, a side-hud, and a bottom console.
+ * The main interface for Wizard Tower. Includes a scrolling camera, a side-hud, and a bottom console.
  */
 @Composable
 fun WizardTowerInterface(
@@ -29,10 +29,14 @@ fun WizardTowerInterface(
             MapDisplay(game.displayTiles, game.currentBackgroundColor)
             Spacer(Modifier.width(displaySpacing))
             SideHud(
-                listOf(
-                    LabeledTextDataBundle("Turn", game.turn.toString(), White),
-                    LabeledTextDataBundle("Camera", game.camera.coordinates.printed(), White),
-                ).plus(game.playerDisplayStats)
+                game.playerDisplayStats
+                    .plus(
+                        listOf(
+                            LabeledTextDataBundle("Turn", game.turn.toString(), White),
+                            LabeledTextDataBundle("Camera", game.camera.coordinates.printed(), White),
+                            game.underCamera,
+                        )
+                    )
             )
         }
         Spacer(Modifier.height(displaySpacing))

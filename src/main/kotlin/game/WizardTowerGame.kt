@@ -14,8 +14,50 @@ enum class OverlayType {
     NONE,
     FACTION,
     PASSABLE,
+    // more to come -- especially for environmental effects and complex spell interactions, eventually
+}
+
+enum class OverwindowType {
+    TITLE_SCREEN,
+    MAP_SCREEN,
+    CHARACTER_SCREEN,
+    INVENTORY_SCREEN,
+    POP_UP_ALERT,
+    CONVERSATION_WINDOW,
     // more to come
 }
+
+fun targetedTile(coordinates: Coordinates): CellDisplayBundle {
+    return CellDisplayBundle(
+        displayValue = "X",
+        displayColor = BrightPurple,
+        coordinates = coordinates,
+    )
+}
+
+val defaultUnderCameraLabel = LabeledTextDataBundle("Under Camera", "N/A", White)
+
+@OptIn(ExperimentalComposeUiApi::class)
+val movementKeyDirectionMap = mapOf(
+    Key.H to Direction.Left(),
+    Key.NumPad4 to Direction.Left(),
+    Key.L to Direction.Right(),
+    Key.NumPad6 to Direction.Right(),
+    Key.J to Direction.Down(),
+    Key.NumPad2 to Direction.Down(),
+    Key.K to Direction.Up(),
+    Key.NumPad8 to Direction.Up(),
+    Key.N to Direction.DownRight(),
+    Key.NumPad3 to Direction.DownRight(),
+    Key.B to Direction.DownLeft(),
+    Key.NumPad1 to Direction.DownLeft(),
+    Key.Y to Direction.UpLeft(),
+    Key.NumPad7 to Direction.UpLeft(),
+    Key.U to Direction.UpRight(),
+    Key.NumPad9 to Direction.UpRight(),
+    Key.Period to Direction.Stationary(),
+    Key.NumPad5 to Direction.Stationary(),
+)
 
 @OptIn(ExperimentalComposeUiApi::class)
 class WizardTowerGame {
@@ -32,6 +74,7 @@ class WizardTowerGame {
     var displayMessages by mutableStateOf(messageLog.exportMessages())
     var turn by mutableStateOf(0)
     var playerDisplayStats by mutableStateOf(listOf<LabeledTextDataBundle>())
+    var underCamera by mutableStateOf(defaultUnderCameraLabel)
 
     /**
      * Returns true if the game is over.
@@ -40,6 +83,13 @@ class WizardTowerGame {
      */
     fun gameOver(): Boolean {
         return false
+    }
+
+    /**
+     * Returns the Actor at the given Coordinates or null.
+     */
+    private fun actorAtCoordinatesOrNull(coordinates: Coordinates): Actor? {
+        return actors.firstOrNull { it.coordinates.matches(coordinates) }
     }
 
     /**
@@ -54,6 +104,9 @@ class WizardTowerGame {
     /**
      * When input happens in the application window, it is sent to this function. All keyEvents are assumed to be
      * KeyUp, for now.
+     *
+     * todo: For the Pop-Up menus, I will want a separate handleInput function to take over from this one while
+     *  pop-ups are active. I will probably rename this one at that point.
      */
     fun handleInput(keyEvent: KeyEvent) {
         var turnAdvanced = false
@@ -61,129 +114,47 @@ class WizardTowerGame {
 
         val player = getPlayer()
 
-        when (keyEvent.key) {
-            // Movement keys using Vi keys or the NumPad:
-            Key.H -> {
-                if (player.move(Direction.Left(), tilemap)) {
+        when (keyEvent.key in movementKeyDirectionMap.keys) {
+            true -> {
+                // Movement keys using Vi keys or the NumPad:
+                if (camera.coupledToOrNull == null)
+                    camera.move(movementKeyDirectionMap[keyEvent.key]!!, tilemap)
+                else if (player.move(movementKeyDirectionMap[keyEvent.key]!!, tilemap)) {
                     moved = true
                     turnAdvanced = true
                 }
             }
-            Key.NumPad4 -> {
-                if (player.move(Direction.Left(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.J -> {
-                if (player.move(Direction.Down(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.NumPad2 -> {
-                if (player.move(Direction.Down(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.K -> {
-                if (player.move(Direction.Up(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.NumPad8 -> {
-                if (player.move(Direction.Up(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.L -> {
-                if (player.move(Direction.Right(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.NumPad6 -> {
-                if (player.move(Direction.Right(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.Y -> {
-                if (player.move(Direction.UpLeft(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.NumPad7 -> {
-                if (player.move(Direction.UpLeft(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.U -> {
-                if (player.move(Direction.UpRight(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.NumPad9 -> {
-                if (player.move(Direction.UpRight(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.B -> {
-                if (player.move(Direction.DownLeft(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.NumPad1 -> {
-                if (player.move(Direction.DownLeft(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.N -> {
-                if (player.move(Direction.DownRight(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.NumPad3 -> {
-                if (player.move(Direction.DownRight(), tilemap)) {
-                    moved = true
-                    turnAdvanced = true
-                }
-            }
-            Key.Period -> {
-                if (player.move(Direction.Stationary(), tilemap))
-                    turnAdvanced = true
-            }
-            Key.NumPad5-> {
-                if (player.move(Direction.Stationary(), tilemap))
-                    turnAdvanced = true
-            }
+            else -> {
+                when (keyEvent.key) {
+                    // Toggle manual targeting mode:
+                    Key.X -> {
+                        if (camera.coupledToOrNull != null) {
+                            camera.decouple()
+                            messageLog.addMessage(Message(turn, "Manual targeting mode enabled.", White))
+                        } else {
+                            camera.coupleTo(getPlayer())
+                            messageLog.addMessage(Message(turn, "Manual targeting mode disabled.", White))
+                        }
+                    }
 
-            // Normal overlay:
-            Key.F1 -> {
-                overlayMode = OverlayType.NONE
-                messageLog.addMessage(Message(turn, "Reset overlay mode.", White))
-            }
+                    // Normal overlay:
+                    Key.F1 -> {
+                        overlayMode = OverlayType.NONE
+                        messageLog.addMessage(Message(turn, "Reset overlay mode.", White))
+                    }
 
-            // Actor Faction overlay:
-            Key.F2 -> {
-                overlayMode = OverlayType.FACTION
-                messageLog.addMessage(Message(turn, "Activated Actor Faction overlay mode.", White))
-            }
+                    // Actor Faction overlay:
+                    Key.F2 -> {
+                        overlayMode = OverlayType.FACTION
+                        messageLog.addMessage(Message(turn, "Activated Actor Faction overlay mode.", White))
+                    }
 
-            // Passable Tiles overlay:
-            Key.F3 -> {
-                overlayMode = OverlayType.PASSABLE
-                messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
+                    // Passable Tiles overlay:
+                    Key.F3 -> {
+                        overlayMode = OverlayType.PASSABLE
+                        messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
+                    }
+                }
             }
         }
 
@@ -250,9 +221,23 @@ class WizardTowerGame {
                                     .firstOrNull { it.coordinates.matches(cell.coordinates) }
                                     .let { maybeActor ->
                                         maybeActor
-                                            ?.toCellDisplayBundle(overlayMode)
-                                            ?: cell
+                                            ?.toCellDisplayBundle(
+                                                overlayMode = overlayMode,
+                                                decoupledCamera = when (camera.coupledToOrNull != null) {
+                                                    true -> null
+                                                    else -> camera.coordinates
+                                                }
+                                            )
+                                            ?: when (camera.coupledToOrNull == null) {
+                                                true -> if (tile.coordinates.matches(camera.coordinates))
+                                                    targetedTile(tile.coordinates)
+                                                else
+                                                    cell
+                                                else -> cell
+                                            }
                                     }
+                            else if (camera.coupledToOrNull == null && tile.coordinates.matches(camera.coordinates))
+                                targetedTile(tile.coordinates)
                             else
                                 cell
                         }
@@ -266,10 +251,20 @@ class WizardTowerGame {
      */
     private fun setGui() {
         val player = getPlayer() as Actor.Player
+
         camera.snap()
+
         overlayActorsOnDisplayTiles()
+
         displayMessages = messageLog.exportMessages()
+
         playerDisplayStats = player.exportToCompose()
+
+        underCamera = actorAtCoordinatesOrNull(camera.coordinates)
+            ?.let { actor ->
+                LabeledTextDataBundle("Under Camera", actor.name, factionColors[actor.maybeFaction]!!)
+            }
+            ?: defaultUnderCameraLabel
     }
 
     /**

@@ -6,6 +6,27 @@ class Camera(
 ) {
 
     /**
+     * Moves the camera.
+     */
+    fun move(
+        direction: Direction,
+        tilemap: Tilemap,
+    ): Boolean {
+        val target = Coordinates(
+            x = coordinates.x + direction.dx,
+            y = coordinates.y + direction.dy
+        )
+        var moved = false
+        tilemap
+            .getTileOrNull(target)
+            ?.let {
+                coordinates = target
+                moved = true
+            }
+        return moved
+    }
+
+    /**
      * "Snaps" the camera to the given newCoordiantes.
      */
     fun snapTo(newCoordinates: Coordinates) {
@@ -30,6 +51,6 @@ class Camera(
      * Decouples the camera from an actor.
      */
     fun decouple() {
-            coupledToOrNull = null
+        coupledToOrNull = null
     }
 }

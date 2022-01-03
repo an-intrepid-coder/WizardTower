@@ -1,6 +1,7 @@
 package game
 
 import androidx.compose.ui.graphics.Color
+import display.BrightPurple
 import display.CellDisplayBundle
 import display.LabeledTextDataBundle
 import display.White
@@ -56,9 +57,14 @@ sealed class Actor(
     /**
      * Returns a CellDisplayBundle corresponding to the given Actor. Can be modified for overlays.
      */
-    fun toCellDisplayBundle(overlayMode: OverlayType): CellDisplayBundle {
+    fun toCellDisplayBundle(
+        overlayMode: OverlayType,
+        decoupledCamera: Coordinates? = null,
+    ): CellDisplayBundle {
         return if (overlayMode == OverlayType.FACTION)
             CellDisplayBundle(displayValue, factionColors[maybeFaction]!!, coordinates)
+        else if (decoupledCamera != null && decoupledCamera.matches(coordinates))
+            CellDisplayBundle(displayValue, BrightPurple, coordinates)
         else
             CellDisplayBundle(displayValue, displayColor, coordinates)
     }

@@ -21,6 +21,29 @@ sealed class Tilemap(
     protected var tiles: MutableList<MutableList<Tile>> = mutableListOf()
 
     /**
+     * Sets a tile at coordiantes to the contents of newTile. Returns true on success; false on failure.
+     */
+    fun setTile(
+        coordinates: Coordinates,
+        newTile: Tile,
+    ): Boolean {
+        getTileOrNull(coordinates)
+            ?.coordinates
+            ?.let { target ->
+                tiles[target.y][target.x] = newTile
+                return true
+            }
+        return false
+    }
+
+    /**
+     * Returns true if the coordinates are in-bounds. getTileOrNull() serves as an inBounds check as well.
+     */
+    fun inBounds(coordinates: Coordinates): Boolean {
+        return coordinates.x >= 0 && coordinates.y >= 0 && coordinates.x < width && coordinates.y < height
+    }
+
+    /**
      * Returns a 1D list of all Tiles.
      */
     fun flattened(): List<Tile> {
