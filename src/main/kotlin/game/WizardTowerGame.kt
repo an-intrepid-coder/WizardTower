@@ -18,12 +18,13 @@ enum class OverlayType {
 }
 
 enum class OverwindowType {
-    TITLE_SCREEN,
+    NO_OVERWINDOW,
     MAP_SCREEN,
-    CHARACTER_SCREEN,
-    INVENTORY_SCREEN,
-    POP_UP_ALERT,
-    CONVERSATION_WINDOW,
+    TITLE_SCREEN, // todo
+    CHARACTER_SCREEN, // todo
+    INVENTORY_SCREEN, // todo
+    POP_UP_ALERT, // todo
+    CONVERSATION_WINDOW, // todo
     // more to come
 }
 
@@ -68,9 +69,10 @@ class WizardTowerGame {
     val messageLog = MessageLog()
 
     // Data to export to the GUI:
-    var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera.coordinates))
+    var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera.coordinates, tilemap.width, tilemap.height))
     var currentBackgroundColor by mutableStateOf(tilemap.backgroundColor)
     var overlayMode = OverlayType.NONE
+    var overwindow = OverwindowType.NO_OVERWINDOW
     var displayMessages by mutableStateOf(messageLog.exportMessages())
     var turn by mutableStateOf(0)
     var playerDisplayStats by mutableStateOf(listOf<LabeledTextDataBundle>())
@@ -102,13 +104,9 @@ class WizardTowerGame {
     }
 
     /**
-     * When input happens in the application window, it is sent to this function. All keyEvents are assumed to be
-     * KeyUp, for now.
-     *
-     * todo: For the Pop-Up menus, I will want a separate handleInput function to take over from this one while
-     *  pop-ups are active. I will probably rename this one at that point.
+     * Handles user input when the overwindow is set to the default.
      */
-    fun handleInput(keyEvent: KeyEvent) {
+    fun handleInputNoOverwindow(keyEvent: KeyEvent) {
         var turnAdvanced = false
         var moved = false
 
@@ -154,6 +152,13 @@ class WizardTowerGame {
                         overlayMode = OverlayType.PASSABLE
                         messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
                     }
+
+                    // Toggle Map Screen. Automatically decouples the camera.
+                    Key.M -> {
+                        overwindow = OverwindowType.MAP_SCREEN
+                        camera.decouple()
+                        messageLog.addMessage(Message(turn, "Map Screen toggled on.", White))
+                    }
                 }
             }
         }
@@ -172,11 +177,57 @@ class WizardTowerGame {
     }
 
     /**
+     * Handles user input when the overwindow is set to the Map Screen.
+     */
+    fun handleInputMapScreen(keyEvent: KeyEvent) {
+        when (keyEvent.key in movementKeyDirectionMap.keys) {
+            true -> {
+                // Movement keys using Vi keys or the NumPad:
+                camera.move(movementKeyDirectionMap[keyEvent.key]!!, tilemap)
+            }
+            else -> {
+                when (keyEvent.key) {
+                    // Normal overlay:
+                    Key.F1 -> {
+                        overlayMode = OverlayType.NONE
+                        messageLog.addMessage(Message(turn, "Reset overlay mode.", White))
+                    }
+
+                    // Actor Faction overlay:
+                    Key.F2 -> {
+                        overlayMode = OverlayType.FACTION
+                        messageLog.addMessage(Message(turn, "Activated Actor Faction overlay mode.", White))
+                    }
+
+                    // Passable Tiles overlay:
+                    Key.F3 -> {
+                        overlayMode = OverlayType.PASSABLE
+                        messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
+                    }
+
+                    // Toggle Map Screen. Automatically decouples the camera.
+                    Key.M -> {
+                        overwindow = OverwindowType.NO_OVERWINDOW
+                        camera.coupleTo(getPlayer())
+                        messageLog.addMessage(Message(turn, "Map Screen toggled off.", White))
+                    }
+                }
+            }
+        }
+        setGui()
+    }
+
+    /**
      * Overlays all the Tiles in the display with their isPassable status.
      */
     private fun overlayPassableTiles(): List<List<CellDisplayBundle>> {
+        val displayDimensions = when (overwindow) {
+            OverwindowType.MAP_SCREEN -> Pair(mapDisplayWidthFill, mapDisplayHeightFill)
+            else -> Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
+        }
+
         return tilemap
-            .exportTilesToCompose(camera.coordinates)
+            .exportTilesToCompose(camera.coordinates, displayDimensions.first, displayDimensions.second)
             .map { row ->
                 row.map { cell ->
                     tilemap.getTileOrNull(cell.coordinates)
@@ -204,9 +255,14 @@ class WizardTowerGame {
         tilemap.calculateFieldOfView(getPlayer())
 
         // Grab exported tiles w/ a potential overlay:
+        val displayDimensions = when (overwindow) {
+            OverwindowType.MAP_SCREEN -> Pair(mapDisplayWidthFill, mapDisplayHeightFill)
+            else -> Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
+        }
+
         val newTiles = when (overlayMode) {
             OverlayType.PASSABLE -> overlayPassableTiles()
-            else -> tilemap.exportTilesToCompose(camera.coordinates)
+            else -> tilemap.exportTilesToCompose(camera.coordinates, displayDimensions.first, displayDimensions.second)
         }
 
         // Apply the potential overlay with the Actors on top of that:

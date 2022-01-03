@@ -21,7 +21,7 @@ sealed class Tilemap(
     protected var tiles: MutableList<MutableList<Tile>> = mutableListOf()
 
     /**
-     * Sets a tile at coordiantes to the contents of newTile. Returns true on success; false on failure.
+     * Sets a tile at coordinates to the contents of newTile. Returns true on success; false on failure.
      */
     fun setTile(
         coordinates: Coordinates,
@@ -129,18 +129,20 @@ sealed class Tilemap(
      * Using cameraPoint as the center Coordinates, returns a slice of the Tilemap which fits in the Map Display.
      */
     fun exportTilesToCompose(
-        cameraPoint: Coordinates
+        cameraPoint: Coordinates,
+        width: Int,
+        height: Int,
     ): List<List<CellDisplayBundle>> {
         val tiles = mutableListOf<MutableList<CellDisplayBundle>>()
 
         val topLeft = Coordinates(
-            x = cameraPoint.x - mapDisplayWidth / 2,
-            y = cameraPoint.y - mapDisplayHeight / 2
+            x = cameraPoint.x - width / 2,
+            y = cameraPoint.y - height / 2
         )
 
-        repeat (mapDisplayHeight) { row ->
+        repeat (height) { row ->
             val newRow = mutableListOf<CellDisplayBundle>()
-            repeat (mapDisplayWidth) { col ->
+            repeat (width) { col ->
                 val target = Coordinates(
                     x = topLeft.x + col,
                     y = topLeft.y + row,
