@@ -7,10 +7,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import display.WizardTowerInterface
-import display.WizardTowerMapScreen
-import game.OverwindowType
-
-// todo: next: major: over-windows!
+import game.InputMode
 
 fun main() = application {
     // The game is the "back end" of the application:
@@ -24,20 +21,17 @@ fun main() = application {
         onKeyEvent = { keyEvent ->
             // For now, the input system responds only to KeyUp events -- I will expand the input system soon.
             if (keyEvent.type == KeyEventType.KeyUp && !game.gameOver())
-                when (game.overwindow) {
-                    OverwindowType.NO_OVERWINDOW -> game.handleInputNoOverwindow(keyEvent)
-                    OverwindowType.MAP_SCREEN -> game.handleInputMapScreen(keyEvent)
+                when (game.inputMode) {
+                    InputMode.NORMAL -> game.handleInputNormalMode(keyEvent)
+                    InputMode.INVENTORY -> game.handleInputInventoryMode(keyEvent)
+                    // todo: Abilities interface
                     else -> error("This should never happen.")
                 }
             true
         }
     ) {
         MaterialTheme {
-            when (game.overwindow) {
-                OverwindowType.NO_OVERWINDOW -> WizardTowerInterface(game)
-                OverwindowType.MAP_SCREEN -> WizardTowerMapScreen(game)
-                else -> error("This should never happen.")
-            }
+            WizardTowerInterface(game)
         }
     }
 }

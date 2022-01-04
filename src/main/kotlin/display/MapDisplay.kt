@@ -13,10 +13,6 @@ import androidx.compose.ui.text.font.FontFamily
 const val mapDisplayWidthNormal = 20
 const val mapDisplayHeightNormal = 20
 
-// The hardcoded dimensions for a "full window" Map Display:
-const val mapDisplayWidthFill = 63
-const val mapDisplayHeightFill = 37
-
 /**
  * Takes a list of display tiles and places them on the screen. Relies on a Tilemap to export the display tiles.
  * Currently, all tiles will have the same background color.

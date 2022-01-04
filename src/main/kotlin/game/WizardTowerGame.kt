@@ -10,22 +10,16 @@ import androidx.compose.ui.input.key.key
 import display.*
 
 enum class OverlayType {
-    // todo: Implement overlays
     NONE,
     FACTION,
     PASSABLE,
     // more to come -- especially for environmental effects and complex spell interactions, eventually
 }
 
-enum class OverwindowType {
-    NO_OVERWINDOW,
-    MAP_SCREEN,
-    TITLE_SCREEN, // todo
-    CHARACTER_SCREEN, // todo
-    INVENTORY_SCREEN, // todo
-    POP_UP_ALERT, // todo
-    CONVERSATION_WINDOW, // todo
-    // more to come
+enum class InputMode {
+    NORMAL,
+    INVENTORY,
+    ABILITIES, // todo
 }
 
 fun targetedTile(coordinates: Coordinates): CellDisplayBundle {
@@ -61,6 +55,14 @@ val movementKeyDirectionMap = mapOf(
 )
 
 @OptIn(ExperimentalComposeUiApi::class)
+val alphabeticalKeys = listOf(
+    Key.A, Key.B, Key.C, Key.D, Key.E, Key.F, Key.G, Key.H,
+    Key.I, Key.J, Key.K, Key.L, Key.M, Key.N, Key.O, Key.P,
+    Key.Q, Key.R, Key.S, Key.T, Key.U, Key.V, Key.W, Key.X,
+    Key.Y, Key.Z,
+)
+
+@OptIn(ExperimentalComposeUiApi::class)
 class WizardTowerGame {
     // Game Data:
     val tilemap = Tilemap.DebugArena()
@@ -72,11 +74,12 @@ class WizardTowerGame {
     var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera.coordinates, tilemap.width, tilemap.height))
     var currentBackgroundColor by mutableStateOf(tilemap.backgroundColor)
     var overlayMode = OverlayType.NONE
-    var overwindow = OverwindowType.NO_OVERWINDOW
+    var inputMode = InputMode.NORMAL
     var displayMessages by mutableStateOf(messageLog.exportMessages())
     var turn by mutableStateOf(0)
     var playerDisplayStats by mutableStateOf(listOf<LabeledTextDataBundle>())
     var underCamera by mutableStateOf(defaultUnderCameraLabel)
+    var inventoryLabels by mutableStateOf(listOf<LabeledTextDataBundle>())
 
     /**
      * Returns true if the game is over.
@@ -97,7 +100,7 @@ class WizardTowerGame {
     /**
      * Returns the player from the actor pool.
      */
-    private fun getPlayer(): Actor {
+    fun getPlayer(): Actor {
         return actors
             .firstOrNull{ it.isPlayer }
             ?: error("Player not found.")
@@ -106,7 +109,7 @@ class WizardTowerGame {
     /**
      * Handles user input when the overwindow is set to the default.
      */
-    fun handleInputNoOverwindow(keyEvent: KeyEvent) {
+    fun handleInputNormalMode(keyEvent: KeyEvent) {
         var turnAdvanced = false
         var moved = false
 
@@ -153,11 +156,11 @@ class WizardTowerGame {
                         messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
                     }
 
-                    // Toggle Map Screen. Automatically decouples the camera.
-                    Key.M -> {
-                        overwindow = OverwindowType.MAP_SCREEN
-                        camera.decouple()
-                        messageLog.addMessage(Message(turn, "Map Screen toggled on.", White))
+                    // Toggle the Inventory Mode:
+                    Key.I -> {
+                        inputMode = InputMode.INVENTORY
+                        inventoryLabels = (getPlayer() as Actor.Player).exportInventoryStrings()
+                        messageLog.addMessage(Message(turn, "Inventory Input Mode toggled (ESC to return).", White))
                     }
                 }
             }
@@ -173,44 +176,39 @@ class WizardTowerGame {
             turn++
         }
 
+        // Sync the GUI:
         setGui()
     }
 
     /**
-     * Handles user input when the overwindow is set to the Map Screen.
+     * Handles user input for the Inventory Input Mode.
      */
-    fun handleInputMapScreen(keyEvent: KeyEvent) {
-        when (keyEvent.key in movementKeyDirectionMap.keys) {
+    fun handleInputInventoryMode(keyEvent: KeyEvent) {
+        when (keyEvent.key in alphabeticalKeys) {
             true -> {
-                // Movement keys using Vi keys or the NumPad:
-                camera.move(movementKeyDirectionMap[keyEvent.key]!!, tilemap)
+                // Get the index of the item selected:
+                val inventoryIndex = alphabeticalKeys
+                    .zip(0 until MAX_INVENTORY_SIZE)
+                    .first { it.first == keyEvent.key }
+                    .second
+
+                val player = getPlayer()
+                val item = player.inventory!![inventoryIndex]
+
+                // Use the item:
+                item.itemEffect
+                    ?.let { it(this, item, player) }
+                    ?: error("Item has no itemEffect.")
+
+                // Send the player back to the main interface afterwards:
+                inputMode = InputMode.NORMAL
+
+                // Counts as a turn:
+                processNextTurn()
             }
             else -> {
-                when (keyEvent.key) {
-                    // Normal overlay:
-                    Key.F1 -> {
-                        overlayMode = OverlayType.NONE
-                        messageLog.addMessage(Message(turn, "Reset overlay mode.", White))
-                    }
-
-                    // Actor Faction overlay:
-                    Key.F2 -> {
-                        overlayMode = OverlayType.FACTION
-                        messageLog.addMessage(Message(turn, "Activated Actor Faction overlay mode.", White))
-                    }
-
-                    // Passable Tiles overlay:
-                    Key.F3 -> {
-                        overlayMode = OverlayType.PASSABLE
-                        messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
-                    }
-
-                    // Toggle Map Screen. Automatically decouples the camera.
-                    Key.M -> {
-                        overwindow = OverwindowType.NO_OVERWINDOW
-                        camera.coupleTo(getPlayer())
-                        messageLog.addMessage(Message(turn, "Map Screen toggled off.", White))
-                    }
+                if (keyEvent.key == Key.Escape) {
+                    inputMode = InputMode.NORMAL
                 }
             }
         }
@@ -221,10 +219,7 @@ class WizardTowerGame {
      * Overlays all the Tiles in the display with their isPassable status.
      */
     private fun overlayPassableTiles(): List<List<CellDisplayBundle>> {
-        val displayDimensions = when (overwindow) {
-            OverwindowType.MAP_SCREEN -> Pair(mapDisplayWidthFill, mapDisplayHeightFill)
-            else -> Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
-        }
+        val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
 
         return tilemap
             .exportTilesToCompose(camera.coordinates, displayDimensions.first, displayDimensions.second)
@@ -255,10 +250,7 @@ class WizardTowerGame {
         tilemap.calculateFieldOfView(getPlayer())
 
         // Grab exported tiles w/ a potential overlay:
-        val displayDimensions = when (overwindow) {
-            OverwindowType.MAP_SCREEN -> Pair(mapDisplayWidthFill, mapDisplayHeightFill)
-            else -> Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
-        }
+        val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
 
         val newTiles = when (overlayMode) {
             OverlayType.PASSABLE -> overlayPassableTiles()
@@ -314,7 +306,7 @@ class WizardTowerGame {
 
         displayMessages = messageLog.exportMessages()
 
-        playerDisplayStats = player.exportToCompose()
+        playerDisplayStats = player.exportStatsToCompose()
 
         underCamera = actorAtCoordinatesOrNull(camera.coordinates)
             ?.let { actor ->

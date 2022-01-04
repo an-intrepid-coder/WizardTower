@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import game.InputMode
 
 val displaySpacing = 8.dp
 
@@ -28,16 +29,26 @@ fun WizardTowerInterface(
             Spacer(Modifier.width(displaySpacing))
             MapDisplay(game.displayTiles, game.currentBackgroundColor)
             Spacer(Modifier.width(displaySpacing))
-            SideHud(
-                game.playerDisplayStats
-                    .plus(
-                        listOf(
-                            LabeledTextDataBundle("Turn", game.turn.toString(), White),
-                            LabeledTextDataBundle("Camera", game.camera.coordinates.printed(), White),
-                            game.underCamera,
-                        )
+            when (game.inputMode) {
+                InputMode.NORMAL -> {
+                    SideHud(
+                        game.playerDisplayStats
+                            .plus(
+                                listOf(
+                                    LabeledTextDataBundle("Turn", game.turn.toString(), White),
+                                    LabeledTextDataBundle("Camera", game.camera.coordinates.printed(), White),
+                                    game.underCamera,
+                                )
+                            )
                     )
-            )
+                }
+                InputMode.INVENTORY -> {
+                    SideHud(
+                        game.inventoryLabels
+                    )
+                }
+            }
+
         }
         Spacer(Modifier.height(displaySpacing))
         Row {
