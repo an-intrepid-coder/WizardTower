@@ -24,8 +24,7 @@ fun main() = application {
                 when (game.inputMode) {
                     InputMode.NORMAL -> game.handleInputNormalMode(keyEvent)
                     InputMode.INVENTORY -> game.handleInputInventoryMode(keyEvent)
-                    // todo: Abilities interface
-                    else -> error("This should never happen.")
+                    InputMode.ABILITIES -> game.handleInputAbilitiesMode(keyEvent)
                 }
             true
         }

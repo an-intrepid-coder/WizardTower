@@ -20,6 +20,13 @@ sealed class Direction(
     val dx: Int,
     val dy: Int,
 ) {
+    /**
+     * Returns true if the Direction has the same dx/dy as another Direction.
+     */
+    fun matches(other: Direction): Boolean {
+        return dx == other.dx && dy == other.dy
+    }
+
     class Up : Direction(0, -1)
 
     class UpRight : Direction(1, -1)

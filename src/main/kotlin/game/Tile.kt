@@ -33,7 +33,7 @@ sealed class Tile(
     }
 
     /**
-     * Describes the actor with a list of Messages.
+     * Describes the Tile with a list of Messages.
      */
     fun describe(): List<Message> {
         val messages = mutableListOf<Message>()

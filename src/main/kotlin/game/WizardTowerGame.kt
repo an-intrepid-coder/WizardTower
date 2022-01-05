@@ -19,7 +19,7 @@ enum class OverlayType {
 enum class InputMode {
     NORMAL,
     INVENTORY,
-    ABILITIES, // todo
+    ABILITIES,
 }
 
 fun targetedTile(coordinates: Coordinates): CellDisplayBundle {
@@ -31,6 +31,7 @@ fun targetedTile(coordinates: Coordinates): CellDisplayBundle {
 }
 
 val defaultUnderCameraLabel = LabeledTextDataBundle("Under Camera", "N/A", White)
+val defaultUnderCameraHealthLabel = LabeledTextDataBundle("Health", "N/A", White)
 
 @OptIn(ExperimentalComposeUiApi::class)
 val movementKeyDirectionMap = mapOf(
@@ -67,7 +68,8 @@ class WizardTowerGame {
     // Game Data:
     val tilemap = Tilemap.DebugArena()
     val camera = Camera(Coordinates(0, 0))
-    val actors = mutableListOf<Actor>()
+    var actors = mutableListOf<Actor>()
+    var consumables = mutableListOf<Consumable>()
     val messageLog = MessageLog()
 
     // Data to export to the GUI:
@@ -79,7 +81,9 @@ class WizardTowerGame {
     var turn by mutableStateOf(0)
     var playerDisplayStats by mutableStateOf(listOf<LabeledTextDataBundle>())
     var underCamera by mutableStateOf(defaultUnderCameraLabel)
+    var underCameraHealth by mutableStateOf(defaultUnderCameraHealthLabel)
     var inventoryLabels by mutableStateOf(listOf<LabeledTextDataBundle>())
+    var abilityLabels by mutableStateOf(listOf<LabeledTextDataBundle>())
 
     /**
      * Returns true if the game is over.
@@ -107,7 +111,24 @@ class WizardTowerGame {
     }
 
     /**
-     * Handles user input when the overwindow is set to the default.
+     * Sets things up for the next turn.
+     */
+    private fun processNextTurn() {
+        turn++
+        removeDeadActors()
+    }
+
+    /**
+     * Removes all dead actors and items from the game.
+     */
+    private fun removeDeadActors() {
+        actors = actors
+            .filter { it.isAlive() }
+            .toMutableList()
+    }
+
+    /**
+     * Handles user input when the Input Mode is set to the default.
      */
     fun handleInputNormalMode(keyEvent: KeyEvent) {
         var turnAdvanced = false
@@ -120,7 +141,7 @@ class WizardTowerGame {
                 // Movement keys using Vi keys or the NumPad:
                 if (camera.coupledToOrNull == null)
                     camera.move(movementKeyDirectionMap[keyEvent.key]!!, tilemap)
-                else if (player.move(movementKeyDirectionMap[keyEvent.key]!!, tilemap)) {
+                else if (player.move(movementKeyDirectionMap[keyEvent.key]!!, this)) {
                     moved = true
                     turnAdvanced = true
                 }
@@ -135,6 +156,40 @@ class WizardTowerGame {
                         } else {
                             camera.coupleTo(getPlayer())
                             messageLog.addMessage(Message(turn, "Manual targeting mode disabled.", White))
+                        }
+                    }
+
+                    // Tab for auto-targeting:
+                    Key.Tab -> {
+                        // Only works if the camera is decoupled (manual targeting mode):
+                        if (camera.coupledToOrNull == null) {
+
+                            // All actors in sight, ordered by distance from the player:
+                            val actorsInSight = actors
+                                .asSequence()
+                                .filter { player.canSee(it.coordinates, this) }
+                                .sortedBy { player.coordinates.chebyshevDistance(it.coordinates) }
+                                .toList()
+
+                            if (actorsInSight.isEmpty())
+                                return
+
+                            // Get index of "current target" if one selected:
+                            var targetIndex = actorAtCoordinatesOrNull(camera.coordinates)
+                                ?.let { target ->
+                                    actorsInSight.indices
+                                        .firstOrNull { actorsInSight[it] == target }
+                                        ?: error("This should never happen.")
+                                }
+                                ?: 0
+
+                            // Cycle through the list:
+                            targetIndex = targetIndex
+                                .plus(1)
+                                .mod(actorsInSight.size)
+
+                            // Snap camera to the next target:
+                            camera.snapTo(actorsInSight[targetIndex].coordinates)
                         }
                     }
 
@@ -162,21 +217,72 @@ class WizardTowerGame {
                         inventoryLabels = (getPlayer() as Actor.Player).exportInventoryStrings()
                         messageLog.addMessage(Message(turn, "Inventory Input Mode toggled (ESC to return).", White))
                     }
+
+                    // Toggle the Abilities Mode:
+                    Key.A -> {
+                        inputMode = InputMode.ABILITIES
+                        abilityLabels = (getPlayer() as Actor.Player).exportAbilityStrings()
+                        messageLog.addMessage(Message(turn, "Abilities Input Mode toggled (ESC to return).", White))
+                    }
                 }
             }
         }
 
+        // If the player moved, then describe the Tile they landed on:
+        // todo: descriptions not really implemented yet
         if (moved)
             tilemap.getTileOrNull(player.coordinates)
                 ?.let { it.describe().forEach { messageLog.addMessage(it) } }
                 ?: error("Player not found.")
 
+        // Advance the turn, if needed:
         if (turnAdvanced) {
             // todo: <various systems will go right here>
-            turn++
+            processNextTurn()
         }
 
         // Sync the GUI:
+        setGui()
+    }
+
+    /**
+     * Handles user input for the Abilities Input Mode.
+     */
+    fun handleInputAbilitiesMode(
+        keyEvent: KeyEvent,
+    ) {
+        when (keyEvent.key in alphabeticalKeys) {
+            true -> {
+                // Get the index of the item selected:
+                val abilitiesIndex = alphabeticalKeys
+                    .zip(0 until MAX_INVENTORY_SIZE)
+                    .first { it.first == keyEvent.key }
+                    .second
+
+                val player = getPlayer()
+
+                // Out-of-bounds check:
+                if (abilitiesIndex >= player.abilities.size)
+                    return
+
+                val ability = player.abilities[abilitiesIndex]
+
+                val targetOrNull = actorAtCoordinatesOrNull(camera.coordinates)
+
+                ability.effect(this, player, targetOrNull)
+
+                // Send the player back to the main interface afterwards:
+                inputMode = InputMode.NORMAL
+
+                // Counts as a turn:
+                processNextTurn()
+            }
+            else -> {
+                if (keyEvent.key == Key.Escape) {
+                    inputMode = InputMode.NORMAL
+                }
+            }
+        }
         setGui()
     }
 
@@ -193,12 +299,16 @@ class WizardTowerGame {
                     .second
 
                 val player = getPlayer()
+
+                // Out-of-bounds check:
+                if (inventoryIndex >= player.inventory!!.size)
+                    return
+
                 val item = player.inventory!![inventoryIndex]
 
-                // Use the item:
-                item.itemEffect
-                    ?.let { it(this, item, player) }
-                    ?: error("Item has no itemEffect.")
+                val targetOrNull = actorAtCoordinatesOrNull(camera.coordinates)
+
+                item.use(this, player, targetOrNull)
 
                 // Send the player back to the main interface afterwards:
                 inputMode = InputMode.NORMAL
@@ -247,7 +357,7 @@ class WizardTowerGame {
      */
     private fun overlayActorsOnDisplayTiles() {
         // Calculate the Field of View:
-        tilemap.calculateFieldOfView(getPlayer())
+        tilemap.calculateFieldOfView(getPlayer(), this)
 
         // Grab exported tiles w/ a potential overlay:
         val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
@@ -300,19 +410,31 @@ class WizardTowerGame {
     private fun setGui() {
         val player = getPlayer() as Actor.Player
 
+        // Snap the camera to anything it is coupled to:
         camera.snap()
 
+        // Overlay visible actors and calculate FoV:
         overlayActorsOnDisplayTiles()
 
+        // Prepare the Bottom Console:
         displayMessages = messageLog.exportMessages()
 
+        // Prepare the player's stats for the HUD:
         playerDisplayStats = player.exportStatsToCompose()
 
-        underCamera = actorAtCoordinatesOrNull(camera.coordinates)
-            ?.let { actor ->
-                LabeledTextDataBundle("Under Camera", actor.name, factionColors[actor.maybeFaction]!!)
+        // If the player has anything under the target cursor then some info for the HUD:
+        when (val maybeActor = actorAtCoordinatesOrNull(camera.coordinates)) {
+            null -> {
+                underCamera = defaultUnderCameraLabel
+                underCameraHealth = defaultUnderCameraHealthLabel
             }
-            ?: defaultUnderCameraLabel
+            else -> {
+                underCamera =
+                    LabeledTextDataBundle("Under Camera", maybeActor.name, factionColors[maybeActor.maybeFaction]!!)
+                underCameraHealth =
+                    LabeledTextDataBundle("Target Health", "${maybeActor.health}/${maybeActor.maxHealth}", White)
+            }
+        }
     }
 
     /**
@@ -334,6 +456,37 @@ class WizardTowerGame {
             )
         )
         camera.coupleTo(getPlayer())
+
+        val player = getPlayer()
+
+        // For now, I'll start the player with some simple abilities/spells for testing:
+        player.addAbility(Ability.MinorHealSelf())
+        player.addAbility(Ability.MagicMissile())
+
+        // Give the player 5 potions to play with.
+        val numStartingPotions = 5
+        repeat (numStartingPotions) {
+            player.addConsumable(
+                Consumable(
+                    name = "Minor Healing Potion",
+                    ability = Ability.MinorHealSelf(),
+                    charges = 1,
+                    maxCharges = 1,
+                    containedWithin = player.inventory!!
+                )
+            )
+        }
+
+        // 100 Targets to play with:
+        val numTargets = 100
+        repeat (numTargets) {
+            val targetCoordinates = tilemap
+                .randomTileOfType(TileType.FLOOR)
+                .coordinates
+
+            addActor(Actor.Target(targetCoordinates))
+        }
+
         setGui()
     }
 }

@@ -7,7 +7,7 @@ import display.*
 const val defaultMapWidth = 100
 const val defaultMapHeight = 100
 
-const val visionRangeRadius = 8
+const val defaultVisionRangeRadius = 8
 
 /**
  * The Tilemap class is a wrapper over a 2D List of Tile objects with many functions for manipulating and generating
@@ -62,7 +62,7 @@ sealed class Tilemap(
     /**
      * Calculates the Field of View of the player. For now, it does not take the FOV of other Actors in to account.
      */
-    fun calculateFieldOfView(player: Actor) {
+    fun calculateFieldOfView(player: Actor, game: WizardTowerGame) {
         // Set all tiles to explored if they were visible:
         tiles.forEach { row ->
             row.forEach { tile ->
@@ -74,9 +74,8 @@ sealed class Tilemap(
         }
 
         // Determine the new set of visible tiles based on the player's Field of View:
-        tilesInRadius(player.coordinates, visionRangeRadius).forEach { tile ->
-            val sightLine = player.coordinates.bresenhamLine(tile.coordinates)
-            if (sightLine.none { getTileOrNull(it)!!.blocksSight })
+        tilesInRadius(player.coordinates, defaultVisionRangeRadius).forEach { tile ->
+            if (player.canSee(tile.coordinates, game))
                 tile.seen()
         }
     }
@@ -196,15 +195,15 @@ sealed class Tilemap(
         height: Int = defaultMapHeight
     ) : Tilemap(width, height, Black) {
         init {
+            // A blank floor with walls to start:
             tiles = floorWithEdgeWalls()
 
+            // 10 Pillars to play with sight-lines:
             val numPillars = 10
             repeat (numPillars) {
-                val target = randomTileOfType(TileType.FLOOR).coordinates
-                tiles[target.y][target.x] = Tile.Wall(target)
+                val targetCoordinates = randomTileOfType(TileType.FLOOR).coordinates
+                tiles[targetCoordinates.y][targetCoordinates.x] = Tile.Wall(targetCoordinates)
             }
-
-            // Some items and stuff to come
         }
     }
 }

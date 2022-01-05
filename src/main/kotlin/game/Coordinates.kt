@@ -42,7 +42,7 @@ class Coordinates(
     /**
      * Returns a Bresenham line between this coordinate and another as List<Coordinates>.
      */
-    fun bresenhamLine(other: Coordinates): List<Coordinates> {
+    fun bresenhamLineTo(other: Coordinates): List<Coordinates> {
         /*
             Algorithm pseudocode courtesy of Wikipedia:
             https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm#All_cases

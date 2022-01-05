@@ -38,6 +38,7 @@ fun WizardTowerInterface(
                                     LabeledTextDataBundle("Turn", game.turn.toString(), White),
                                     LabeledTextDataBundle("Camera", game.camera.coordinates.printed(), White),
                                     game.underCamera,
+                                    game.underCameraHealth,
                                 )
                             )
                     )
@@ -45,6 +46,11 @@ fun WizardTowerInterface(
                 InputMode.INVENTORY -> {
                     SideHud(
                         game.inventoryLabels
+                    )
+                }
+                InputMode.ABILITIES -> {
+                    SideHud(
+                        game.abilityLabels
                     )
                 }
             }

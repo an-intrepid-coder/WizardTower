@@ -3,36 +3,80 @@ package game
 import androidx.compose.ui.graphics.Color
 import display.*
 
+// These are both limitations of the way I am handling input at the moment and I may change that in the future.
 const val MAX_INVENTORY_SIZE = 26
+const val MAX_ABILITIES = 26
 
 /**
  * The Actor sealed class. Actors in the game will be instances of subclasses of Actor.
  */
 sealed class Actor(
+    // Name:
     val name: String,
+
+    // Coordinates:
     var coordinates: Coordinates,
+
+    // What will show up in Compose:
     val displayValue: String,
     val displayColor: Color,
+
+    // Health (even "items" have it):
     var health: Int,
     var maxHealth: Int,
+
+    // Ability Points (for spells and abilities):
+    var abilityPoints: Int,
+    var maxAbilityPoints: Int,
+
+    // Faction, if any:
     var maybeFaction: Faction? = null,
+
+    // Special boolean for the player:
     val isPlayer: Boolean = false,
+
+    // Amount of gold:
     var gold: Int = 0,
-    var inventory: MutableList<Actor>? = null,
-    var itemEffect: ((WizardTowerGame, Actor, Actor) -> Unit)? = null,
+
+    // Inventory, if any:
+    var inventory: MutableList<Consumable>? = null,
+
+    // Abilities (unlike inventory, this is never null):
+    var abilities: MutableList<Ability> = mutableListOf()
 ) {
+    /**
+     * Removes an item from the Actor's inventory, if possible.
+     */
+    fun removeAbility(ability: Ability) {
+        abilities.remove(ability)
+    }
+
+    /**
+     * Adds an ability to the Actor's inventory, if possible.
+     */
+    fun addAbility(ability: Ability) {
+        if (abilities.size < MAX_ABILITIES)
+            abilities.add(ability)
+    }
+
+    /**
+     * Returns true if the actor can see the given coordinates.
+     */
+    fun canSee(targetCoordinates: Coordinates, game: WizardTowerGame): Boolean {
+        val sightLineClear = coordinates
+            .bresenhamLineTo(targetCoordinates)
+            .none { game.tilemap.getTileOrNull(it)!!.blocksSight }
+
+        val targetInRange = targetCoordinates.chebyshevDistance(coordinates) <= defaultVisionRangeRadius
+
+        return sightLineClear && targetInRange
+    }
+
     /**
      * Sets the Actor's health to 0.
      */
     fun kill() {
         health = 0
-    }
-
-    /**
-     * Returns true if the Actor has an itemEffect.
-     */
-    fun hasItemEffect(): Boolean {
-        return itemEffect != null
     }
 
     /**
@@ -45,17 +89,17 @@ sealed class Actor(
     /**
      * Removes an item from the Actor's inventory, if possible.
      */
-    fun removeItem(actor: Actor) {
-        if (hasInventory() && inventory!!.contains(actor))
-            inventory!!.remove(actor)
+    fun removeConsumable(item: Consumable) {
+        if (hasInventory() && inventory!!.contains(item))
+            inventory!!.remove(item)
     }
 
     /**
      * Adds an item to the Actor's inventory, if possible.
      */
-    fun addItem(actor: Actor) {
+    fun addConsumable(item: Consumable) {
         if (hasInventory() && inventory!!.size < MAX_INVENTORY_SIZE)
-            inventory!!.add(actor)
+            inventory!!.add(item)
     }
 
     /**
@@ -64,18 +108,23 @@ sealed class Actor(
      */
     fun move(
         direction: Direction,
-        tilemap: Tilemap,
+        game: WizardTowerGame
     ): Boolean {
         val target = Coordinates(
             x = coordinates.x + direction.dx,
             y = coordinates.y + direction.dy
         )
         var moved = false
-        tilemap
+        game.tilemap
             .getTileOrNull(target)
             ?.let { tile ->
-                // todo: Actor-vs-Actor collision detection
-                if (tile.isPassable) {
+                // todo: Actor vs. Actor combat
+
+                val maybeActor = game
+                    .actors
+                    .firstOrNull { it.coordinates.matches(tile.coordinates) }
+
+                if (direction.matches(Direction.Stationary()) || (tile.isPassable && maybeActor == null)) {
                     coordinates = target
                     moved = true
                 }
@@ -84,7 +133,7 @@ sealed class Actor(
     }
 
     /**
-     * Describes the actor with a list of Messages.
+     * Describes the Actor with a list of Messages.
      */
     fun describe(): List<Message> {
         val messages = mutableListOf<Message>()
@@ -105,6 +154,16 @@ sealed class Actor(
             CellDisplayBundle(displayValue, BrightPurple, coordinates)
         else
             CellDisplayBundle(displayValue, displayColor, coordinates)
+    }
+
+    /**
+     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
+     */
+    fun changeAbilityPoints(amount: Int) {
+        abilityPoints = abilityPoints
+            .plus(amount)
+            .coerceAtMost(maxAbilityPoints)
+            .coerceAtLeast(0)
     }
 
     /**
@@ -134,25 +193,20 @@ sealed class Actor(
     }
 
     /**
-     * Very simple health potion.
+     * A literal target for practice.
      */
-    class MinorHealingPotion(
+    class Target(
         coordinates: Coordinates
     ) : Actor(
-        name = "Minor Healing Potion",
+        name = "Practice Target",
         coordinates = coordinates,
-        displayValue = "!",
-        displayColor = BrightBlue,
-        health = 3,
-        maxHealth = 3,
-        itemEffect = { game, self, triggerer ->
-            val healAmount = 10
-            triggerer.changeHealth(healAmount)
-            self.kill()
-            game.messageLog.addMessage(
-                Message(game.turn, "${triggerer.name} healed $healAmount health using a ${self.name}", GoGreen)
-            )
-        }
+        displayValue = "p",
+        displayColor = White,
+        maybeFaction = Faction.HOSTILE,
+        health = 10,
+        maxHealth = 10,
+        abilityPoints = 0,
+        maxAbilityPoints = 0,
     )
 
     /**
@@ -167,14 +221,26 @@ sealed class Actor(
         displayColor = White,
         isPlayer = true,
         maybeFaction = Faction.PLAYER,
+
+        // Stats are wholly arbitrary for now. Will balance down the road:
         health = 10,
         maxHealth = 10,
-        inventory = mutableListOf(
-            MinorHealingPotion(coordinates),
-            MinorHealingPotion(coordinates),
-            MinorHealingPotion(coordinates),
-        ),
+        abilityPoints = 30,
+        maxAbilityPoints = 30,
+
+        inventory = mutableListOf(),
     ) {
+        /**
+         * Export the player's abilities as a list of (a..z)-labeled strings.
+         */
+        fun exportAbilityStrings(): List<LabeledTextDataBundle> {
+            return abilities
+                .zip(('a'..'z').toList())
+                .map { pair ->
+                    LabeledTextDataBundle("${pair.second}", pair.first.name, White)
+                }
+        }
+
         /**
          * Export the player's inventory as a list of (a..z)-labeled strings.
          */
@@ -193,6 +259,7 @@ sealed class Actor(
             return listOf(
                 LabeledTextDataBundle("Gold", gold.toString(), White),
                 LabeledTextDataBundle("Health", "$health/$maxHealth", White),
+                LabeledTextDataBundle("Ability Points", "$abilityPoints/$maxAbilityPoints", White)
             )
         }
     }
