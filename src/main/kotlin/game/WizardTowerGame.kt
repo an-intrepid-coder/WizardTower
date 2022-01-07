@@ -22,9 +22,12 @@ enum class InputMode {
     ABILITIES,
 }
 
-fun targetedTile(coordinates: Coordinates): CellDisplayBundle {
+fun targetedTile(
+    coordinates: Coordinates,
+    displayValue: String,
+): CellDisplayBundle {
     return CellDisplayBundle(
-        displayValue = "X",
+        displayValue = displayValue,
         displayColor = BrightPurple,
         coordinates = coordinates,
     )
@@ -71,6 +74,7 @@ class WizardTowerGame {
     var actors = mutableListOf<Actor>()
     var consumables = mutableListOf<Consumable>()
     val messageLog = MessageLog()
+    var targetPathOverlayToggled = false
 
     // Data to export to the GUI:
     var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera.coordinates, tilemap.width, tilemap.height))
@@ -156,6 +160,15 @@ class WizardTowerGame {
                         } else {
                             camera.coupleTo(getPlayer())
                             messageLog.addMessage(Message(turn, "Manual targeting mode disabled.", White))
+                        }
+                    }
+
+                    // Toggle "path" overlay for a target in manual targeting mode:
+                    Key.P -> {
+                        // Only works if the camera is decoupled (manual targeting mode):
+                        if (camera.coupledToOrNull == null) {
+                            targetPathOverlayToggled = !targetPathOverlayToggled
+                            messageLog.addMessage(Message(turn, "Toggled path-to-target overlay.", White))
                         }
                     }
 
@@ -356,29 +369,46 @@ class WizardTowerGame {
      * displayTiles variable which is used by the interface.
      */
     private fun overlayActorsOnDisplayTiles() {
+        val player = getPlayer()
+
         // Calculate the Field of View:
-        tilemap.calculateFieldOfView(getPlayer(), this)
+        tilemap.calculateFieldOfView(player, this)
 
         // Grab exported tiles w/ a potential overlay:
         val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
 
+        // Export tiles from Tilemap with a potential overlay:
         val newTiles = when (overlayMode) {
             OverlayType.PASSABLE -> overlayPassableTiles()
             else -> tilemap.exportTilesToCompose(camera.coordinates, displayDimensions.first, displayDimensions.second)
         }
 
-        // Apply the potential overlay with the Actors on top of that:
+        // Grab the Target Path overlay if it is toggled:
+        val targetLineOrNull = when (targetPathOverlayToggled) {
+            true -> player.coordinates
+                .bresenhamLineTo(camera.coordinates)
+                .filter { !it.matches(player.coordinates) && !it.matches(camera.coordinates) }
+            else -> null
+        }
+
+        // Apply the Tiles and Overlays with the Actors on top of that:
         displayTiles = newTiles
             .map { row ->
                 row.map { cell ->
                     tilemap
                         .getTileOrNull(cell.coordinates)
                         ?.let { tile ->
-                            if (tile.visibleToPlayer)
+                            // If the Target Path is to be overlaid on this tile:
+                            if (targetLineOrNull != null && targetLineOrNull.any { it.matches(tile.coordinates) })
+                                targetedTile(tile.coordinates, "*")
+
+                            // Else if player can see tile:
+                            else if (tile.visibleToPlayer)
                                 actors
                                     .firstOrNull { it.coordinates.matches(cell.coordinates) }
                                     .let { maybeActor ->
                                         maybeActor
+                                            // If there is an Actor on the tile:
                                             ?.toCellDisplayBundle(
                                                 overlayMode = overlayMode,
                                                 decoupledCamera = when (camera.coupledToOrNull != null) {
@@ -386,16 +416,20 @@ class WizardTowerGame {
                                                     else -> camera.coordinates
                                                 }
                                             )
+                                            // When there is no actor:
                                             ?: when (camera.coupledToOrNull == null) {
-                                                true -> if (tile.coordinates.matches(camera.coordinates))
-                                                    targetedTile(tile.coordinates)
-                                                else
-                                                    cell
+                                                true ->
+                                                    // Crosshairs for targeted Tile in manual targeting mode:
+                                                    if (tile.coordinates.matches(camera.coordinates))
+                                                        targetedTile(tile.coordinates, "X")
+                                                    else
+                                                        cell
                                                 else -> cell
                                             }
                                     }
+                            // Else if player can't see Tile, but they are targeting it manually:
                             else if (camera.coupledToOrNull == null && tile.coordinates.matches(camera.coordinates))
-                                targetedTile(tile.coordinates)
+                                targetedTile(tile.coordinates, "X")
                             else
                                 cell
                         }
