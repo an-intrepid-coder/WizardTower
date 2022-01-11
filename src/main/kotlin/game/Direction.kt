@@ -27,6 +27,8 @@ sealed class Direction(
         return dx == other.dx && dy == other.dy
     }
 
+    class Raw(dx: Int, dy: Int) : Direction(dx, dy)
+
     class Up : Direction(0, -1)
 
     class UpRight : Direction(1, -1)

@@ -21,6 +21,16 @@ sealed class Tilemap(
     protected var tiles: MutableList<MutableList<Tile>> = mutableListOf()
 
     /**
+     * Returns the Bounds of the Tilemap.
+     */
+    fun bounds(): Bounds {
+        return Bounds(
+            xRange = 0 until width,
+            yRange = 0 until height
+        )
+    }
+
+    /**
      * Sets a tile at coordinates to the contents of newTile. Returns true on success; false on failure.
      */
     fun setTile(
@@ -83,7 +93,7 @@ sealed class Tilemap(
     /**
      * Returns all Tiles within a given radius around a given origin.
      */
-    private fun tilesInRadius(
+    fun tilesInRadius(
         origin: Coordinates,
         inRadius: Int
     ): List<Tile> {
@@ -199,7 +209,7 @@ sealed class Tilemap(
             tiles = floorWithEdgeWalls()
 
             // 10 Pillars to play with sight-lines:
-            val numPillars = 10
+            val numPillars = 200
             repeat (numPillars) {
                 val targetCoordinates = randomTileOfType(TileType.FLOOR).coordinates
                 tiles[targetCoordinates.y][targetCoordinates.x] = Tile.Wall(targetCoordinates)

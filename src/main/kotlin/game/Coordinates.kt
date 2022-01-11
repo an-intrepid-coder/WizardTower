@@ -18,6 +18,15 @@ class Coordinates(
     }
 
     /**
+     * Returns the Direction one would need to move to go from this Coordinate to the given one.
+     */
+    fun relativeTo(other: Coordinates): Direction {
+        val dx = other.x - x
+        val dy = other.y - y
+        return Direction.Raw(dx, dy)
+    }
+
+    /**
      * Returns a neighboring Coordinate in the given direction.
      */
     fun moved(direction: Direction): Coordinates {
@@ -37,6 +46,18 @@ class Coordinates(
     // todo: comments
     fun chebyshevDistance(other: Coordinates): Int {
         return max(abs(other.x - x), abs(other.y - y))
+    }
+
+    /**
+     * Returns all neighbor coordinates that exist within the given bounds.
+     */
+    fun neighbors(bounds: Bounds): List<Coordinates> {
+        return allDirections
+            .asSequence()
+            .filter { !it.matches(Direction.Stationary()) }
+            .map { Coordinates(this.x + it.dx, this.y + it.dy) }
+            .filter { bounds.inBounds(it) }
+            .toList()
     }
 
     /**

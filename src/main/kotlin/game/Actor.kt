@@ -42,7 +42,13 @@ sealed class Actor(
     var inventory: MutableList<Consumable>? = null,
 
     // Abilities (unlike inventory, this is never null):
-    var abilities: MutableList<Ability> = mutableListOf()
+    var abilities: MutableList<Ability> = mutableListOf(),
+
+    // Path: The current Coordinates path the Actor is following, if any:
+    var path: MutableList<Coordinates>? = null,
+
+    // Behavior, if any:
+    var behavior: ((WizardTowerGame, Actor) -> Unit)? = null, // format: (Game, Self)
 ) {
     /**
      * Removes an item from the Actor's inventory, if possible.
@@ -118,8 +124,6 @@ sealed class Actor(
         game.tilemap
             .getTileOrNull(target)
             ?.let { tile ->
-                // todo: Actor vs. Actor combat
-
                 val maybeActor = game
                     .actors
                     .firstOrNull { it.coordinates.matches(tile.coordinates) }
@@ -127,9 +131,40 @@ sealed class Actor(
                 if (direction.matches(Direction.Stationary()) || (tile.isPassable && maybeActor == null)) {
                     coordinates = target
                     moved = true
+                } else if (maybeActor != null && wouldFight(maybeActor)) {
+                    val dmg = 1 // for now
+                    maybeActor.changeHealth(-dmg)
+                    game.messageLog.addMessage(
+                        Message(
+                            turn = game.turn,
+                            text = "$name struck ${maybeActor.name} for $dmg damage.",
+                            textColor = CautionYellow,
+                        )
+                    )
+                    if (!maybeActor.isAlive())
+                        game.messageLog.addMessage(
+                            Message(
+                                turn = game.turn,
+                                text = "${maybeActor.name} dies!",
+                                textColor = CautionYellow,
+                            )
+                        )
+
+                    // Counts as movement for the sake of turn processing
+                    moved = true
                 }
             }
         return moved
+    }
+
+    /**
+     * Compares two actors to determine if movement-collisions result in combat.
+     *
+     * Note: Eventually I will have a more fine-grained faction system than just Player/Neutral/Hostile.
+     */
+    private fun wouldFight(actor: Actor): Boolean {
+        return (maybeFaction == Faction.PLAYER && actor.maybeFaction == Faction.HOSTILE)
+                || (maybeFaction == Faction.HOSTILE && actor.maybeFaction == Faction.PLAYER)
     }
 
     /**
@@ -193,6 +228,77 @@ sealed class Actor(
     }
 
     /**
+     * Moves the Actor in a random direction.
+     */
+    fun moveRandom(game: WizardTowerGame) {
+        val directionToMove = allDirections.random()
+        move(directionToMove, game)
+    }
+
+    /**
+     * Moves the Actor towards the first Tile in their saved path.
+     */
+    fun moveAlongPath(game: WizardTowerGame) {
+        if (path == null)
+            return
+        else if (path!!.isEmpty())
+            return
+
+        val directionToMove = coordinates
+            .relativeTo(path!!.first())
+
+        move(directionToMove, game)
+        path!!.removeFirst()
+    }
+
+    /**
+     * Large, scaled quadrupeds with nasty dispositions.
+     */
+    class Barg(
+        coordinates: Coordinates,
+    ) : Actor(
+        name = "Barg",
+        coordinates = coordinates,
+        displayValue = "B",
+        displayColor = White,
+        maybeFaction = Faction.HOSTILE,
+        health = 10,
+        maxHealth = 10,
+        abilityPoints = 0,
+        maxAbilityPoints = 0,
+        path = mutableListOf(),
+        behavior = { game, self ->
+            /*
+                This behavior lambda generates an A* path to the player and takes the first step along that path,
+                if the actor can see the player. If the actor can't see the player, then it either moves along the
+                path to the player's last-seen location or takes a move in a random direction.
+
+                I may make Behavior its own class in the near future.
+             */
+            val player = game.getPlayer()
+            when (self.canSee(player.coordinates, game)) {
+                true -> {
+                    self.path = AStarPath.Direct(
+                        start = self.coordinates,
+                        goal = player.coordinates,
+                        game = game,
+                        actor = self,
+                    ).path?.toMutableList() ?: error("A* Path null result.")
+                    self.path!!.removeFirst()
+
+                    self.moveAlongPath(game)
+                }
+                else -> {
+                    when (self.path!!.isEmpty()) {
+                        true -> self.moveRandom(game)
+                        else -> self.moveAlongPath(game)
+                    }
+                }
+            }
+        }
+    )
+
+    /**
      * A literal target for practice.
      */
     class Target(
@@ -207,6 +313,17 @@ sealed class Actor(
         maxHealth = 10,
         abilityPoints = 0,
         maxAbilityPoints = 0,
+        behavior = { game, self ->
+            val fluffChanceOutOf100 = 1
+            if (game.getPlayer().canSee(self.coordinates, game) && withChance(100, fluffChanceOutOf100))
+                game.messageLog.addMessage(
+                    Message(
+                        turn = game.turn,
+                        text = "The practice target exists.",
+                        textColor = BrightBlue,
+                    )
+                )
+        }
     )
 
     /**

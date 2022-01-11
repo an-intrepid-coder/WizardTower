@@ -75,6 +75,7 @@ class WizardTowerGame {
     var consumables = mutableListOf<Consumable>()
     val messageLog = MessageLog()
     var targetPathOverlayToggled = false
+    var inputLock = false
 
     // Data to export to the GUI:
     var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera.coordinates, tilemap.width, tilemap.height))
@@ -115,11 +116,44 @@ class WizardTowerGame {
     }
 
     /**
-     * Sets things up for the next turn.
+     * Hands input off to the appropriate inputMode's corresponding function. If the input resulted in the need to
+     * process a new turn then input is locked during this process.
      */
-    private fun processNextTurn() {
-        turn++
+    fun handleInput(keyEvent: KeyEvent) {
+        when (inputMode) {
+            InputMode.NORMAL -> handleInputNormalMode(keyEvent)
+            InputMode.INVENTORY -> handleInputInventoryMode(keyEvent)
+            InputMode.ABILITIES -> handleInputAbilitiesMode(keyEvent)
+        }
+
+        if (inputLock) {
+            processTurn()
+        }
+    }
+
+    /**
+     * Wraps everything which needs to happen after a turn advances. Still using a simple time system where player
+     * goes first and all enemies go afterwards in a pretty arbitrary order. I will implement a more advanced time
+     * system at some point.
+     */
+    private fun processTurn() {
+        behaviorCheck()
         removeDeadActors()
+        turn++
+        syncGui()
+        inputLock = false
+    }
+
+    /**
+     * Runs the behavior function for each Actor in the game which has one.
+     */
+    private fun behaviorCheck() {
+        actors
+            .asSequence()
+            .filter { it.behavior != null }
+            .forEach { actor ->
+                actor.behavior!!(this, actor)
+            }
     }
 
     /**
@@ -135,7 +169,6 @@ class WizardTowerGame {
      * Handles user input when the Input Mode is set to the default.
      */
     fun handleInputNormalMode(keyEvent: KeyEvent) {
-        var turnAdvanced = false
         var moved = false
 
         val player = getPlayer()
@@ -143,11 +176,15 @@ class WizardTowerGame {
         when (keyEvent.key in movementKeyDirectionMap.keys) {
             true -> {
                 // Movement keys using Vi keys or the NumPad:
-                if (camera.coupledToOrNull == null)
+                if (camera.coupledToOrNull == null) {
                     camera.move(movementKeyDirectionMap[keyEvent.key]!!, tilemap)
+                    syncGui()
+                }
                 else if (player.move(movementKeyDirectionMap[keyEvent.key]!!, this)) {
                     moved = true
-                    turnAdvanced = true
+
+                    // Movement triggers a new turn:
+                    inputLock = true
                 }
             }
             else -> {
@@ -161,6 +198,7 @@ class WizardTowerGame {
                             camera.coupleTo(getPlayer())
                             messageLog.addMessage(Message(turn, "Manual targeting mode disabled.", White))
                         }
+                        syncGui()
                     }
 
                     // Toggle "path" overlay for a target in manual targeting mode:
@@ -169,6 +207,7 @@ class WizardTowerGame {
                         if (camera.coupledToOrNull == null) {
                             targetPathOverlayToggled = !targetPathOverlayToggled
                             messageLog.addMessage(Message(turn, "Toggled path-to-target overlay.", White))
+                            syncGui()
                         }
                     }
 
@@ -203,6 +242,8 @@ class WizardTowerGame {
 
                             // Snap camera to the next target:
                             camera.snapTo(actorsInSight[targetIndex].coordinates)
+
+                            syncGui()
                         }
                     }
 
@@ -210,18 +251,21 @@ class WizardTowerGame {
                     Key.F1 -> {
                         overlayMode = OverlayType.NONE
                         messageLog.addMessage(Message(turn, "Reset overlay mode.", White))
+                        syncGui()
                     }
 
                     // Actor Faction overlay:
                     Key.F2 -> {
                         overlayMode = OverlayType.FACTION
                         messageLog.addMessage(Message(turn, "Activated Actor Faction overlay mode.", White))
+                        syncGui()
                     }
 
                     // Passable Tiles overlay:
                     Key.F3 -> {
                         overlayMode = OverlayType.PASSABLE
                         messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
+                        syncGui()
                     }
 
                     // Toggle the Inventory Mode:
@@ -229,6 +273,7 @@ class WizardTowerGame {
                         inputMode = InputMode.INVENTORY
                         inventoryLabels = (getPlayer() as Actor.Player).exportInventoryStrings()
                         messageLog.addMessage(Message(turn, "Inventory Input Mode toggled (ESC to return).", White))
+                        syncGui()
                     }
 
                     // Toggle the Abilities Mode:
@@ -236,6 +281,7 @@ class WizardTowerGame {
                         inputMode = InputMode.ABILITIES
                         abilityLabels = (getPlayer() as Actor.Player).exportAbilityStrings()
                         messageLog.addMessage(Message(turn, "Abilities Input Mode toggled (ESC to return).", White))
+                        syncGui()
                     }
                 }
             }
@@ -247,15 +293,6 @@ class WizardTowerGame {
             tilemap.getTileOrNull(player.coordinates)
                 ?.let { it.describe().forEach { messageLog.addMessage(it) } }
                 ?: error("Player not found.")
-
-        // Advance the turn, if needed:
-        if (turnAdvanced) {
-            // todo: <various systems will go right here>
-            processNextTurn()
-        }
-
-        // Sync the GUI:
-        setGui()
     }
 
     /**
@@ -288,15 +325,15 @@ class WizardTowerGame {
                 inputMode = InputMode.NORMAL
 
                 // Counts as a turn:
-                processNextTurn()
+                inputLock = true
             }
             else -> {
                 if (keyEvent.key == Key.Escape) {
                     inputMode = InputMode.NORMAL
+                    syncGui()
                 }
             }
         }
-        setGui()
     }
 
     /**
@@ -327,15 +364,15 @@ class WizardTowerGame {
                 inputMode = InputMode.NORMAL
 
                 // Counts as a turn:
-                processNextTurn()
+                inputLock = true
             }
             else -> {
                 if (keyEvent.key == Key.Escape) {
                     inputMode = InputMode.NORMAL
+                    syncGui()
                 }
             }
         }
-        setGui()
     }
 
     /**
@@ -441,7 +478,7 @@ class WizardTowerGame {
     /**
      * Makes sure the GUI and the Game are in-sync.
      */
-    private fun setGui() {
+    fun syncGui() {
         val player = getPlayer() as Actor.Player
 
         // Snap the camera to anything it is coupled to:
@@ -511,16 +548,15 @@ class WizardTowerGame {
             )
         }
 
-        // 100 Targets to play with:
-        val numTargets = 100
-        repeat (numTargets) {
-            val targetCoordinates = tilemap
-                .randomTileOfType(TileType.FLOOR)
-                .coordinates
+        // Place a Barg close to the player for testing:
+        val bargSpawn = tilemap.tilesInRadius(player.coordinates, 5)
+            .filter { it.isPassable }
+            .random()
+            .coordinates
+        addActor(
+            Actor.Barg(bargSpawn)
+        )
 
-            addActor(Actor.Target(targetCoordinates))
-        }
-
-        setGui()
+        syncGui()
     }
 }
