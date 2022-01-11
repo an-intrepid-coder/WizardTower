@@ -6,8 +6,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import display.WizardTowerInterface
-import game.InputMode
+import inputoutput.WizardTowerInterface
 
 fun main() = application {
     // The game is the "back end" of the application:
@@ -20,13 +19,10 @@ fun main() = application {
         state = rememberWindowState(width = 700.dp, height = 850.dp),
         onKeyEvent = { keyEvent ->
             // For now, the input system responds only to KeyUp events -- I will expand the input system soon.
-            if (keyEvent.type == KeyEventType.KeyUp && !game.gameOver())
-                when (game.inputMode) {
-                    InputMode.NORMAL -> game.handleInputNormalMode(keyEvent)
-                    InputMode.INVENTORY -> game.handleInputInventoryMode(keyEvent)
-                    InputMode.ABILITIES -> game.handleInputAbilitiesMode(keyEvent)
-                }
-            true
+            if (keyEvent.type == KeyEventType.KeyUp && !game.inputLock) {
+                game.handleInput(keyEvent)
+            }
+            false
         }
     ) {
         MaterialTheme {

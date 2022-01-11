@@ -1,8 +1,8 @@
 package game
 
-import display.BrightPurple
-import display.CautionYellow
-import display.GoGreen
+import inputoutput.BrightPurple
+import inputoutput.CautionYellow
+import inputoutput.GoGreen
 
 /**
  * An "ability" can be a spell, the properties of a potion, a neat physical ability or anything else which can

@@ -7,7 +7,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
-import display.*
+import inputoutput.*
 
 enum class OverlayType {
     NONE,
@@ -35,36 +35,6 @@ fun targetedTile(
 
 val defaultUnderCameraLabel = LabeledTextDataBundle("Under Camera", "N/A", White)
 val defaultUnderCameraHealthLabel = LabeledTextDataBundle("Health", "N/A", White)
-
-@OptIn(ExperimentalComposeUiApi::class)
-val movementKeyDirectionMap = mapOf(
-    Key.H to Direction.Left(),
-    Key.NumPad4 to Direction.Left(),
-    Key.L to Direction.Right(),
-    Key.NumPad6 to Direction.Right(),
-    Key.J to Direction.Down(),
-    Key.NumPad2 to Direction.Down(),
-    Key.K to Direction.Up(),
-    Key.NumPad8 to Direction.Up(),
-    Key.N to Direction.DownRight(),
-    Key.NumPad3 to Direction.DownRight(),
-    Key.B to Direction.DownLeft(),
-    Key.NumPad1 to Direction.DownLeft(),
-    Key.Y to Direction.UpLeft(),
-    Key.NumPad7 to Direction.UpLeft(),
-    Key.U to Direction.UpRight(),
-    Key.NumPad9 to Direction.UpRight(),
-    Key.Period to Direction.Stationary(),
-    Key.NumPad5 to Direction.Stationary(),
-)
-
-@OptIn(ExperimentalComposeUiApi::class)
-val alphabeticalKeys = listOf(
-    Key.A, Key.B, Key.C, Key.D, Key.E, Key.F, Key.G, Key.H,
-    Key.I, Key.J, Key.K, Key.L, Key.M, Key.N, Key.O, Key.P,
-    Key.Q, Key.R, Key.S, Key.T, Key.U, Key.V, Key.W, Key.X,
-    Key.Y, Key.Z,
-)
 
 @OptIn(ExperimentalComposeUiApi::class)
 class WizardTowerGame {
@@ -173,14 +143,16 @@ class WizardTowerGame {
 
         val player = getPlayer()
 
-        when (keyEvent.key in movementKeyDirectionMap.keys) {
+        val directionOrNull = directionFromKeyOrNull(keyEvent.key)
+
+        when (directionOrNull != null) {
             true -> {
                 // Movement keys using Vi keys or the NumPad:
                 if (camera.coupledToOrNull == null) {
-                    camera.move(movementKeyDirectionMap[keyEvent.key]!!, tilemap)
+                    camera.move(directionOrNull, tilemap)
                     syncGui()
                 }
-                else if (player.move(movementKeyDirectionMap[keyEvent.key]!!, this)) {
+                else if (player.move(directionOrNull, this)) {
                     moved = true
 
                     // Movement triggers a new turn:

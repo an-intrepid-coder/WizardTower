@@ -1,7 +1,7 @@
 package game
 
 import androidx.compose.ui.graphics.Color
-import display.BrightPurple
+import inputoutput.BrightPurple
 
 /**
  * Contains a turn-stamped, colored message.

@@ -1,9 +1,9 @@
 package game
 
-import display.AlertRed
-import display.BrightBlue
-import display.GoGreen
-import display.White
+import inputoutput.AlertRed
+import inputoutput.BrightBlue
+import inputoutput.GoGreen
+import inputoutput.White
 
 enum class Faction {
     PLAYER,

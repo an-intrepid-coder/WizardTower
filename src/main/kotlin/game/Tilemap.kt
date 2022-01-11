@@ -1,7 +1,7 @@
 package game
 
 import androidx.compose.ui.graphics.Color
-import display.*
+import inputoutput.*
 
 // The default size of the scrollable maps (they can be larger than the display width):
 const val defaultMapWidth = 100

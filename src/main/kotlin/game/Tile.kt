@@ -1,9 +1,9 @@
 package game
 
 import androidx.compose.ui.graphics.Color
-import display.CellDisplayBundle
-import display.White
-import display.randomFoggyColor
+import inputoutput.CellDisplayBundle
+import inputoutput.White
+import inputoutput.randomFoggyColor
 
 enum class TileType {
     FLOOR,

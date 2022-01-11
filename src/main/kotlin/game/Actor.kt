@@ -1,7 +1,7 @@
 package game
 
 import androidx.compose.ui.graphics.Color
-import display.*
+import inputoutput.*
 
 // These are both limitations of the way I am handling input at the moment and I may change that in the future.
 const val MAX_INVENTORY_SIZE = 26

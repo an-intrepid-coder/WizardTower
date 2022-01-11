@@ -16,7 +16,7 @@ sealed class AStarPath(
     game: WizardTowerGame,
     actor: Actor? = null,
     /*
-        Heuristic Function should take the form of (Start, Goal, Game, Actor?). The default only looks for
+        Heuristic Function should take the form of (Start, Goal, Game). The default only looks for
         the shortest passable distance.
      */
     heuristicFunction: (Coordinates, Coordinates, WizardTowerGame) -> Int = { node, goal, game ->
