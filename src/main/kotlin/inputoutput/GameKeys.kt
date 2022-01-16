@@ -7,7 +7,7 @@ import game.Direction
 /**
  * An enumeration of all specific input commands.
  */
-enum class GameKey {
+enum class GameKeyLabel {
     MOVE_STATIONARY,
     ALT_MOVE_STATIONARY,
 
@@ -52,96 +52,122 @@ enum class GameKey {
     INVENTORY_MENU,
 }
 
-/**
- * A map of all input enumerations to their defaults.
- *
- * todo: next: a settings interface for rebinding.
- */
 @OptIn(ExperimentalComposeUiApi::class)
-val rebindableKeymap = mutableMapOf(
-    GameKey.MOVE_STATIONARY to Key.Period,
-    GameKey.ALT_MOVE_STATIONARY to Key.NumPad5,
-
-    GameKey.MOVE_UP to Key.K,
-    GameKey.ALT_MOVE_UP to Key.NumPad8,
-
-    GameKey.MOVE_UPLEFT to Key.Y,
-    GameKey.ALT_MOVE_UPLEFT to Key.NumPad7,
-
-    GameKey.MOVE_UPRIGHT to Key.U,
-    GameKey.ALT_MOVE_UPRIGHT to Key.NumPad9,
-
-    GameKey.MOVE_DOWN to Key.J,
-    GameKey.ALT_MOVE_DOWN to Key.NumPad2,
-
-    GameKey.MOVE_DOWNLEFT to Key.B,
-    GameKey.ALT_MOVE_DOWNLEFT to Key.NumPad1,
-
-    GameKey.MOVE_DOWNRIGHT to Key.N,
-    GameKey.ALT_MOVE_DOWNRIGHT to Key.NumPad3,
-
-    GameKey.MOVE_RIGHT to Key.L,
-    GameKey.ALT_MOVE_RIGHT to Key.NumPad6,
-
-    GameKey.MOVE_LEFT to Key.H,
-    GameKey.ALT_MOVE_LEFT to Key.NumPad4,
-
-    GameKey.ESCAPE to Key.Escape,
-
-    GameKey.RESET_MAP_OVERLAY to Key.F1,
-    GameKey.FACTION_MAP_OVERLAY to Key.F2,
-    GameKey.PASSABLE_TERRAIN_MAP_OVERLAY to Key.F3,
-
-    GameKey.TOGGLE_MANUAL_CAMERA to Key.X,
-    GameKey.AUTO_TARGET to Key.Tab,
-    GameKey.TOGGLE_TARGET_PATH to Key.P,
-
-    GameKey.ABILITIES_MENU to Key.A,
-    GameKey.INVENTORY_MENU to Key.I,
-)
-
-/**
- * Returns an appropriate Direction from a movement key, or null.
- */
-fun directionFromKeyOrNull(key: Key): Direction? {
-    val movementKeysToDirections = mapOf(
-        rebindableKeymap[GameKey.MOVE_STATIONARY] to Direction.Stationary(),
-        rebindableKeymap[GameKey.ALT_MOVE_STATIONARY] to Direction.Stationary(),
-
-        rebindableKeymap[GameKey.MOVE_UP] to Direction.Up(),
-        rebindableKeymap[GameKey.ALT_MOVE_UP] to Direction.Up(),
-
-        rebindableKeymap[GameKey.MOVE_DOWN] to Direction.Down(),
-        rebindableKeymap[GameKey.ALT_MOVE_DOWN] to Direction.Down(),
-
-        rebindableKeymap[GameKey.MOVE_RIGHT] to Direction.Right(),
-        rebindableKeymap[GameKey.ALT_MOVE_RIGHT] to Direction.Right(),
-
-        rebindableKeymap[GameKey.MOVE_UPLEFT] to Direction.UpLeft(),
-        rebindableKeymap[GameKey.ALT_MOVE_UPLEFT] to Direction.UpLeft(),
-
-        rebindableKeymap[GameKey.MOVE_UPRIGHT] to Direction.UpRight(),
-        rebindableKeymap[GameKey.ALT_MOVE_UPRIGHT] to Direction.UpRight(),
-
-        rebindableKeymap[GameKey.MOVE_LEFT] to Direction.Left(),
-        rebindableKeymap[GameKey.ALT_MOVE_LEFT] to Direction.Left(),
-
-        rebindableKeymap[GameKey.MOVE_DOWNLEFT] to Direction.DownLeft(),
-        rebindableKeymap[GameKey.ALT_MOVE_DOWNLEFT] to Direction.DownLeft(),
-
-        rebindableKeymap[GameKey.MOVE_DOWNRIGHT] to Direction.DownRight(),
-        rebindableKeymap[GameKey.ALT_MOVE_DOWNRIGHT] to Direction.DownRight(),
+class GameKeys {
+    /**
+     * All alphabet keys.
+     */
+    val alphabeticalKeys = listOf(
+        Key.A, Key.B, Key.C, Key.D, Key.E, Key.F, Key.G, Key.H,
+        Key.I, Key.J, Key.K, Key.L, Key.M, Key.N, Key.O, Key.P,
+        Key.Q, Key.R, Key.S, Key.T, Key.U, Key.V, Key.W, Key.X,
+        Key.Y, Key.Z,
     )
-    return movementKeysToDirections[key]
-}
 
-/**
- * All alphabet keys.
- */
-@OptIn(ExperimentalComposeUiApi::class)
-val alphabeticalKeys = listOf(
-    Key.A, Key.B, Key.C, Key.D, Key.E, Key.F, Key.G, Key.H,
-    Key.I, Key.J, Key.K, Key.L, Key.M, Key.N, Key.O, Key.P,
-    Key.Q, Key.R, Key.S, Key.T, Key.U, Key.V, Key.W, Key.X,
-    Key.Y, Key.Z,
-)
+    /**
+     * A map of all input enumerations to their defaults.
+     */
+    val rebindableKeymap = mutableMapOf(
+        GameKeyLabel.MOVE_STATIONARY to Key.Period,
+        GameKeyLabel.ALT_MOVE_STATIONARY to Key.NumPad5,
+
+        GameKeyLabel.MOVE_UP to Key.K,
+        GameKeyLabel.ALT_MOVE_UP to Key.NumPad8,
+
+        GameKeyLabel.MOVE_UPLEFT to Key.Y,
+        GameKeyLabel.ALT_MOVE_UPLEFT to Key.NumPad7,
+
+        GameKeyLabel.MOVE_UPRIGHT to Key.U,
+        GameKeyLabel.ALT_MOVE_UPRIGHT to Key.NumPad9,
+
+        GameKeyLabel.MOVE_DOWN to Key.J,
+        GameKeyLabel.ALT_MOVE_DOWN to Key.NumPad2,
+
+        GameKeyLabel.MOVE_DOWNLEFT to Key.B,
+        GameKeyLabel.ALT_MOVE_DOWNLEFT to Key.NumPad1,
+
+        GameKeyLabel.MOVE_DOWNRIGHT to Key.N,
+        GameKeyLabel.ALT_MOVE_DOWNRIGHT to Key.NumPad3,
+
+        GameKeyLabel.MOVE_RIGHT to Key.L,
+        GameKeyLabel.ALT_MOVE_RIGHT to Key.NumPad6,
+
+        GameKeyLabel.MOVE_LEFT to Key.H,
+        GameKeyLabel.ALT_MOVE_LEFT to Key.NumPad4,
+
+        GameKeyLabel.ESCAPE to Key.Escape,
+
+        GameKeyLabel.RESET_MAP_OVERLAY to Key.F1,
+        GameKeyLabel.FACTION_MAP_OVERLAY to Key.F2,
+        GameKeyLabel.PASSABLE_TERRAIN_MAP_OVERLAY to Key.F3,
+
+        GameKeyLabel.TOGGLE_MANUAL_CAMERA to Key.X,
+        GameKeyLabel.AUTO_TARGET to Key.Tab,
+        GameKeyLabel.TOGGLE_TARGET_PATH to Key.P,
+
+        GameKeyLabel.ABILITIES_MENU to Key.A,
+        GameKeyLabel.INVENTORY_MENU to Key.I,
+    )
+
+    /**
+     * Returns the GameKeyLabel bound to the given key or null.
+     */
+    fun gameKeyLabelFromBoundKeyOrNull(key: Key): GameKeyLabel? {
+        for (entry in rebindableKeymap) {
+            if (entry.value == key)
+                return entry.key
+        }
+        return null
+    }
+
+    /**
+     * Returns an appropriate Direction from a movement key, or null.
+     */
+    fun directionFromKeyOrNull(key: Key): Direction? {
+        val movementKeysToDirections = mapOf(
+            rebindableKeymap[GameKeyLabel.MOVE_STATIONARY] to Direction.Stationary(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_STATIONARY] to Direction.Stationary(),
+
+            rebindableKeymap[GameKeyLabel.MOVE_UP] to Direction.Up(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_UP] to Direction.Up(),
+
+            rebindableKeymap[GameKeyLabel.MOVE_DOWN] to Direction.Down(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_DOWN] to Direction.Down(),
+
+            rebindableKeymap[GameKeyLabel.MOVE_RIGHT] to Direction.Right(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_RIGHT] to Direction.Right(),
+
+            rebindableKeymap[GameKeyLabel.MOVE_UPLEFT] to Direction.UpLeft(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_UPLEFT] to Direction.UpLeft(),
+
+            rebindableKeymap[GameKeyLabel.MOVE_UPRIGHT] to Direction.UpRight(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_UPRIGHT] to Direction.UpRight(),
+
+            rebindableKeymap[GameKeyLabel.MOVE_LEFT] to Direction.Left(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_LEFT] to Direction.Left(),
+
+            rebindableKeymap[GameKeyLabel.MOVE_DOWNLEFT] to Direction.DownLeft(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_DOWNLEFT] to Direction.DownLeft(),
+
+            rebindableKeymap[GameKeyLabel.MOVE_DOWNRIGHT] to Direction.DownRight(),
+            rebindableKeymap[GameKeyLabel.ALT_MOVE_DOWNRIGHT] to Direction.DownRight(),
+        )
+        return movementKeysToDirections[key]
+    }
+
+    /**
+     * Rebinds the given game control key to a different physical key.
+     */
+    fun rebindKey(
+        gameKeyLabel: GameKeyLabel,
+        newKey: Key,
+    ) {
+        val alreadyBoundOrNull = gameKeyLabelFromBoundKeyOrNull(newKey)
+        if (alreadyBoundOrNull == null)
+            rebindableKeymap[gameKeyLabel] = newKey
+        else {
+            rebindableKeymap[alreadyBoundOrNull] = rebindableKeymap[gameKeyLabel]!!
+            rebindableKeymap[gameKeyLabel] = newKey
+        }
+    }
+}

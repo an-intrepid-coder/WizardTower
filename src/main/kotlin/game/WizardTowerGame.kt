@@ -4,9 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.*
 import inputoutput.*
 
 enum class OverlayType {
@@ -20,6 +18,7 @@ enum class InputMode {
     NORMAL,
     INVENTORY,
     ABILITIES,
+    BIND_KEY,
 }
 
 fun targetedTile(
@@ -45,7 +44,9 @@ class WizardTowerGame {
     var consumables = mutableListOf<Consumable>()
     val messageLog = MessageLog()
     var targetPathOverlayToggled = false
-    var inputLock = false
+    var inputLocked = false
+    val gameKeys = GameKeys()
+    var maybeRebindingKey: GameKeyLabel? = null
 
     // Data to export to the GUI:
     var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera.coordinates, tilemap.width, tilemap.height))
@@ -94,10 +95,30 @@ class WizardTowerGame {
             InputMode.NORMAL -> handleInputNormalMode(keyEvent)
             InputMode.INVENTORY -> handleInputInventoryMode(keyEvent)
             InputMode.ABILITIES -> handleInputAbilitiesMode(keyEvent)
+            InputMode.BIND_KEY -> handleInputBindKeyMode(keyEvent)
         }
-
-        if (inputLock) {
+        if (inputLocked)
             processTurn()
+    }
+
+    /**
+     * Handles user input when the Input Mode is set to Bind Key.
+     */
+    private fun handleInputBindKeyMode(keyEvent: KeyEvent) {
+        if (keyEvent.isShiftPressed) {
+            gameKeys.rebindKey(maybeRebindingKey!!, keyEvent.key)
+
+            messageLog.addMessage(
+                Message(
+                    turn = turn,
+                    text = "$maybeRebindingKey bound to ${keyEvent.key}.",
+                    textColor = BrightBlue,
+                )
+            )
+
+            inputMode = InputMode.NORMAL
+            maybeRebindingKey = null
+            syncGui()
         }
     }
 
@@ -111,7 +132,7 @@ class WizardTowerGame {
         removeDeadActors()
         turn++
         syncGui()
-        inputLock = false
+        inputLocked = false
     }
 
     /**
@@ -138,13 +159,25 @@ class WizardTowerGame {
     /**
      * Handles user input when the Input Mode is set to the default.
      */
-    fun handleInputNormalMode(keyEvent: KeyEvent) {
+    private fun handleInputNormalMode(keyEvent: KeyEvent) {
+        if (keyEvent.isCtrlPressed && keyEvent.key in gameKeys.rebindableKeymap.values) {
+            maybeRebindingKey = gameKeys.gameKeyLabelFromBoundKeyOrNull(keyEvent.key)
+            inputMode = InputMode.BIND_KEY
+
+            messageLog.addMessage(
+                Message(
+                    turn = turn,
+                    text = "Bind Key Mode toggled for $maybeRebindingKey. Press shift + desired key.",
+                    textColor = BrightBlue,
+                )
+            )
+            syncGui()
+            return
+        }
+
         var moved = false
-
         val player = getPlayer()
-
-        val directionOrNull = directionFromKeyOrNull(keyEvent.key)
-
+        val directionOrNull = gameKeys.directionFromKeyOrNull(keyEvent.key)
         when (directionOrNull != null) {
             true -> {
                 // Movement keys using Vi keys or the NumPad:
@@ -156,13 +189,13 @@ class WizardTowerGame {
                     moved = true
 
                     // Movement triggers a new turn:
-                    inputLock = true
+                    inputLocked = true
                 }
             }
             else -> {
-                when (keyEvent.key) {
+                when (gameKeys.gameKeyLabelFromBoundKeyOrNull(keyEvent.key)) {
                     // Toggle manual targeting mode:
-                    Key.X -> {
+                    GameKeyLabel.TOGGLE_MANUAL_CAMERA -> {
                         if (camera.coupledToOrNull != null) {
                             camera.decouple()
                             messageLog.addMessage(Message(turn, "Manual targeting mode enabled.", White))
@@ -174,7 +207,7 @@ class WizardTowerGame {
                     }
 
                     // Toggle "path" overlay for a target in manual targeting mode:
-                    Key.P -> {
+                    GameKeyLabel.TOGGLE_TARGET_PATH -> {
                         // Only works if the camera is decoupled (manual targeting mode):
                         if (camera.coupledToOrNull == null) {
                             targetPathOverlayToggled = !targetPathOverlayToggled
@@ -184,7 +217,7 @@ class WizardTowerGame {
                     }
 
                     // Tab for auto-targeting:
-                    Key.Tab -> {
+                    GameKeyLabel.AUTO_TARGET -> {
                         // Only works if the camera is decoupled (manual targeting mode):
                         if (camera.coupledToOrNull == null) {
 
@@ -220,28 +253,28 @@ class WizardTowerGame {
                     }
 
                     // Normal overlay:
-                    Key.F1 -> {
+                    GameKeyLabel.RESET_MAP_OVERLAY -> {
                         overlayMode = OverlayType.NONE
                         messageLog.addMessage(Message(turn, "Reset overlay mode.", White))
                         syncGui()
                     }
 
                     // Actor Faction overlay:
-                    Key.F2 -> {
+                    GameKeyLabel.FACTION_MAP_OVERLAY -> {
                         overlayMode = OverlayType.FACTION
                         messageLog.addMessage(Message(turn, "Activated Actor Faction overlay mode.", White))
                         syncGui()
                     }
 
                     // Passable Tiles overlay:
-                    Key.F3 -> {
+                    GameKeyLabel.PASSABLE_TERRAIN_MAP_OVERLAY -> {
                         overlayMode = OverlayType.PASSABLE
                         messageLog.addMessage(Message(turn, "Activated Passable Tiles overlay mode.", White))
                         syncGui()
                     }
 
                     // Toggle the Inventory Mode:
-                    Key.I -> {
+                    GameKeyLabel.INVENTORY_MENU -> {
                         inputMode = InputMode.INVENTORY
                         inventoryLabels = (getPlayer() as Actor.Player).exportInventoryStrings()
                         messageLog.addMessage(Message(turn, "Inventory Input Mode toggled (ESC to return).", White))
@@ -249,12 +282,14 @@ class WizardTowerGame {
                     }
 
                     // Toggle the Abilities Mode:
-                    Key.A -> {
+                    GameKeyLabel.ABILITIES_MENU -> {
                         inputMode = InputMode.ABILITIES
                         abilityLabels = (getPlayer() as Actor.Player).exportAbilityStrings()
                         messageLog.addMessage(Message(turn, "Abilities Input Mode toggled (ESC to return).", White))
                         syncGui()
                     }
+
+                    else -> Unit
                 }
             }
         }
@@ -270,13 +305,13 @@ class WizardTowerGame {
     /**
      * Handles user input for the Abilities Input Mode.
      */
-    fun handleInputAbilitiesMode(
+    private fun handleInputAbilitiesMode(
         keyEvent: KeyEvent,
     ) {
-        when (keyEvent.key in alphabeticalKeys) {
+        when (keyEvent.key in gameKeys.alphabeticalKeys) {
             true -> {
                 // Get the index of the item selected:
-                val abilitiesIndex = alphabeticalKeys
+                val abilitiesIndex = gameKeys.alphabeticalKeys
                     .zip(0 until MAX_INVENTORY_SIZE)
                     .first { it.first == keyEvent.key }
                     .second
@@ -297,7 +332,7 @@ class WizardTowerGame {
                 inputMode = InputMode.NORMAL
 
                 // Counts as a turn:
-                inputLock = true
+                inputLocked = true
             }
             else -> {
                 if (keyEvent.key == Key.Escape) {
@@ -311,11 +346,11 @@ class WizardTowerGame {
     /**
      * Handles user input for the Inventory Input Mode.
      */
-    fun handleInputInventoryMode(keyEvent: KeyEvent) {
-        when (keyEvent.key in alphabeticalKeys) {
+    private fun handleInputInventoryMode(keyEvent: KeyEvent) {
+        when (keyEvent.key in gameKeys.alphabeticalKeys) {
             true -> {
                 // Get the index of the item selected:
-                val inventoryIndex = alphabeticalKeys
+                val inventoryIndex = gameKeys.alphabeticalKeys
                     .zip(0 until MAX_INVENTORY_SIZE)
                     .first { it.first == keyEvent.key }
                     .second
@@ -336,7 +371,7 @@ class WizardTowerGame {
                 inputMode = InputMode.NORMAL
 
                 // Counts as a turn:
-                inputLock = true
+                inputLocked = true
             }
             else -> {
                 if (keyEvent.key == Key.Escape) {
@@ -450,7 +485,7 @@ class WizardTowerGame {
     /**
      * Makes sure the GUI and the Game are in-sync.
      */
-    fun syncGui() {
+    private fun syncGui() {
         val player = getPlayer() as Actor.Player
 
         // Snap the camera to anything it is coupled to:

@@ -43,7 +43,9 @@ class Coordinates(
         return "($x, $y)"
     }
 
-    // todo: comments
+    /**
+     * Returns distance from one Coordinates to another.
+     */
     fun chebyshevDistance(other: Coordinates): Int {
         return max(abs(other.x - x), abs(other.y - y))
     }

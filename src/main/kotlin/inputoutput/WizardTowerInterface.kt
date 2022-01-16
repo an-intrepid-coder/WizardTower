@@ -53,6 +53,17 @@ fun WizardTowerInterface(
                         game.abilityLabels
                     )
                 }
+                InputMode.BIND_KEY -> {
+                    SideHud(
+                        listOf(
+                            LabeledTextDataBundle(
+                                label = "Binding",
+                                value = game.maybeRebindingKey.toString(),
+                                color = White,
+                            )
+                        )
+                    )
+                }
             }
 
         }

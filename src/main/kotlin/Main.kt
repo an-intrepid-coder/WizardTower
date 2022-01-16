@@ -19,9 +19,8 @@ fun main() = application {
         state = rememberWindowState(width = 700.dp, height = 850.dp),
         onKeyEvent = { keyEvent ->
             // For now, the input system responds only to KeyUp events -- I will expand the input system soon.
-            if (keyEvent.type == KeyEventType.KeyUp && !game.inputLock) {
+            if (keyEvent.type == KeyEventType.KeyUp && !game.inputLocked)
                 game.handleInput(keyEvent)
-            }
             false
         }
     ) {

@@ -125,7 +125,7 @@ sealed class Tilemap(
     }
 
     /**
-     * Returns a random DeepSpace tile.
+     * Returns a random Passable tile.
      */
     fun randomPassableTile(): Tile {
         return tiles
@@ -208,7 +208,7 @@ sealed class Tilemap(
             // A blank floor with walls to start:
             tiles = floorWithEdgeWalls()
 
-            // 10 Pillars to play with sight-lines:
+            // 200 Pillars to play with sight-lines:
             val numPillars = 200
             repeat (numPillars) {
                 val targetCoordinates = randomTileOfType(TileType.FLOOR).coordinates
