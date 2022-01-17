@@ -13,6 +13,10 @@ sealed class Ability(
     var effect: ((WizardTowerGame, Actor, Actor?) -> Unit), // format: (game, caster, target?)
     // todo: ability levels and/or modifiers
 ) {
+    override fun toString(): String {
+        return name
+    }
+
     /**
      * Magic missile shoots a simple projectile at a target in line-of-sight.
      */
@@ -77,7 +81,11 @@ sealed class Ability(
             val healAmount = 10
             caster.changeHealth(healAmount)
             game.messageLog.addMessage(
-                Message(game.turn, "${caster.name} magically heals $healAmount health!", GoGreen)
+                Message(
+                    turn = game.turn,
+                    text = "${caster.name} magically heals $healAmount health!",
+                    textColor = GoGreen
+                )
             )
         }
     )

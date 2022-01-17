@@ -176,7 +176,7 @@ class WizardTowerGame {
         }
 
         var moved = false
-        val player = getPlayer()
+        val player = getPlayer() as Actor.Player
         val directionOrNull = gameKeys.directionFromKeyOrNull(keyEvent.key)
         when (directionOrNull != null) {
             true -> {
@@ -276,7 +276,7 @@ class WizardTowerGame {
                     // Toggle the Inventory Mode:
                     GameKeyLabel.INVENTORY_MENU -> {
                         inputMode = InputMode.INVENTORY
-                        inventoryLabels = (getPlayer() as Actor.Player).exportInventoryStrings()
+                        inventoryLabels = player.exportAlphabetizedStrings(player.inventory!!)
                         messageLog.addMessage(Message(turn, "Inventory Input Mode toggled (ESC to return).", White))
                         syncGui()
                     }
@@ -284,7 +284,7 @@ class WizardTowerGame {
                     // Toggle the Abilities Mode:
                     GameKeyLabel.ABILITIES_MENU -> {
                         inputMode = InputMode.ABILITIES
-                        abilityLabels = (getPlayer() as Actor.Player).exportAbilityStrings()
+                        abilityLabels = player.exportAlphabetizedStrings(player.abilities)
                         messageLog.addMessage(Message(turn, "Abilities Input Mode toggled (ESC to return).", White))
                         syncGui()
                     }

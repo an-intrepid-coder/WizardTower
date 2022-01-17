@@ -348,24 +348,14 @@ sealed class Actor(
         inventory = mutableListOf(),
     ) {
         /**
-         * Export the player's abilities as a list of (a..z)-labeled strings.
+         * A generic function for returning a list of abilities, inventory items, etc. as a list of
+         * alphabetically-keyed items in a list of LabeledTextDataBundle.
          */
-        fun exportAbilityStrings(): List<LabeledTextDataBundle> {
-            return abilities
+        fun <T> exportAlphabetizedStrings(list: List<T>): List<LabeledTextDataBundle> {
+            return list
                 .zip(('a'..'z').toList())
                 .map { pair ->
-                    LabeledTextDataBundle("${pair.second}", pair.first.name, White)
-                }
-        }
-
-        /**
-         * Export the player's inventory as a list of (a..z)-labeled strings.
-         */
-        fun exportInventoryStrings(): List<LabeledTextDataBundle> {
-            return inventory!!
-                .zip(('a'..'z').toList())
-                .map { pair ->
-                    LabeledTextDataBundle("${pair.second}", pair.first.name, White)
+                    LabeledTextDataBundle("${pair.second}", pair.first.toString(), White)
                 }
         }
 

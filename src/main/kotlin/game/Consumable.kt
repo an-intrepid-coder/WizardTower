@@ -12,6 +12,9 @@ class Consumable(
     var maxCharges: Int,
     var containedWithin: MutableList<Consumable>,
 ) {
+    override fun toString(): String {
+        return name
+    }
 
     /**
      * Describes the Consumable with a list of Messages.
