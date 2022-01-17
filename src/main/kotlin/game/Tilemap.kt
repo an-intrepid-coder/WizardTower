@@ -169,7 +169,7 @@ sealed class Tilemap(
     }
 
     /**
-     * Returns true if the given Coordinates are an edge point.
+     * Returns true is the given Coordinates are an edge point.
      */
     private fun isEdgePoint(coordinates: Coordinates): Boolean {
         val x = coordinates.x
