@@ -4,17 +4,19 @@ import kotlin.math.abs
 import kotlin.math.max
 
 /**
- * Simple Coordinates class to use instead of Pair<Int, Int>.
+ * Simple Coordinates class.
  */
 class Coordinates(
     val x: Int,
     val y: Int,
 ) {
-    /**
-     * Returns true if the Coordinates match the other Coordinates.
-     */
-    fun matches(other: Coordinates): Boolean {
-        return x == other.x && y == other.y
+    override fun equals(other: Any?): Boolean {
+        other as Coordinates
+        return this.x == other.x && this.y == other.y
+    }
+
+    override fun hashCode(): Int {
+        return 31 * x + y
     }
 
     /**

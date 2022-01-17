@@ -111,6 +111,8 @@ sealed class Actor(
     /**
      * Attempts to move an Actor one tile in the given Direction, on the given Tilemap. Returns true if
      * the movement was successful, and false otherwise.
+     *
+     * todo: A more complex time/initiative system.
      */
     fun move(
         direction: Direction,
@@ -126,7 +128,7 @@ sealed class Actor(
             ?.let { tile ->
                 val maybeActor = game
                     .actors
-                    .firstOrNull { it.coordinates.matches(tile.coordinates) }
+                    .firstOrNull { it.coordinates == tile.coordinates }
 
                 if (direction.matches(Direction.Stationary()) || (tile.isPassable && maybeActor == null)) {
                     coordinates = target
@@ -185,7 +187,7 @@ sealed class Actor(
     ): CellDisplayBundle {
         return if (overlayMode == OverlayType.FACTION)
             CellDisplayBundle(displayValue, factionColors[maybeFaction]!!, coordinates)
-        else if (decoupledCamera != null && decoupledCamera.matches(coordinates))
+        else if (decoupledCamera != null && decoupledCamera == coordinates)
             CellDisplayBundle(displayValue, BrightPurple, coordinates)
         else
             CellDisplayBundle(displayValue, displayColor, coordinates)

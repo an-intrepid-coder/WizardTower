@@ -93,7 +93,7 @@ sealed class AStarPath(
             while (!openSet.isEmpty()) {
                 val currentNode = openSet.remove()
 
-                if (currentNode.matches(nextWaypoint)) {
+                if (currentNode == nextWaypoint) {
                     finalPath = finalPath
                         .plus(reconstructPath(cameFrom, currentNode))
                     return true

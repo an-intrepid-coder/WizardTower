@@ -74,7 +74,7 @@ class WizardTowerGame {
      * Returns the Actor at the given Coordinates or null.
      */
     private fun actorAtCoordinatesOrNull(coordinates: Coordinates): Actor? {
-        return actors.firstOrNull { it.coordinates.matches(coordinates) }
+        return actors.firstOrNull { it.coordinates == coordinates }
     }
 
     /**
@@ -431,7 +431,7 @@ class WizardTowerGame {
         val targetLineOrNull = when (targetPathOverlayToggled) {
             true -> player.coordinates
                 .bresenhamLineTo(camera.coordinates)
-                .filter { !it.matches(player.coordinates) && !it.matches(camera.coordinates) }
+                .filter { it != player.coordinates && it != camera.coordinates }
             else -> null
         }
 
@@ -443,13 +443,13 @@ class WizardTowerGame {
                         .getTileOrNull(cell.coordinates)
                         ?.let { tile ->
                             // If the Target Path is to be overlaid on this tile:
-                            if (targetLineOrNull != null && targetLineOrNull.any { it.matches(tile.coordinates) })
+                            if (targetLineOrNull != null && targetLineOrNull.any { it == tile.coordinates })
                                 targetedTile(tile.coordinates, "*")
 
                             // Else if player can see tile:
                             else if (tile.visibleToPlayer)
                                 actors
-                                    .firstOrNull { it.coordinates.matches(cell.coordinates) }
+                                    .firstOrNull { it.coordinates == cell.coordinates }
                                     .let { maybeActor ->
                                         maybeActor
                                             // If there is an Actor on the tile:
@@ -464,7 +464,7 @@ class WizardTowerGame {
                                             ?: when (camera.coupledToOrNull == null) {
                                                 true ->
                                                     // Crosshairs for targeted Tile in manual targeting mode:
-                                                    if (tile.coordinates.matches(camera.coordinates))
+                                                    if (tile.coordinates == camera.coordinates)
                                                         targetedTile(tile.coordinates, "X")
                                                     else
                                                         cell
@@ -472,7 +472,7 @@ class WizardTowerGame {
                                             }
                                     }
                             // Else if player can't see Tile, but they are targeting it manually:
-                            else if (camera.coupledToOrNull == null && tile.coordinates.matches(camera.coordinates))
+                            else if (camera.coupledToOrNull == null && tile.coordinates == camera.coordinates)
                                 targetedTile(tile.coordinates, "X")
                             else
                                 cell

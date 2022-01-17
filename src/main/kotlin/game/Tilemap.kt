@@ -111,7 +111,7 @@ sealed class Tilemap(
     ): Tile? {
         return tiles
             .flatten()
-            .firstOrNull { it.coordinates.matches(coordinates) }
+            .firstOrNull { it.coordinates == coordinates }
     }
 
     /**

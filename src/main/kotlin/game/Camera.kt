@@ -1,5 +1,9 @@
 package game
 
+/**
+ * A pseudo-Actor which exists in the geography of the game world and may be optionally attached to an Actor.
+ * This helps to enable a scrolling camera interface.
+ */
 class Camera(
     var coordinates: Coordinates,
     var coupledToOrNull: Actor? = null,
