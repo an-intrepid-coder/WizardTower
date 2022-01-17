@@ -8,6 +8,19 @@ class Camera(
     var coordinates: Coordinates,
     var coupledToOrNull: Actor? = null,
 ) {
+    /**
+     * Couples the Camera to the given actor until decoupled.
+     */
+    fun coupleTo(actor: Actor) {
+        coupledToOrNull = actor
+    }
+
+    /**
+     * Decouples the camera from an actor.
+     */
+    fun decouple() {
+        coupledToOrNull = null
+    }
 
     /**
      * Moves the camera.
@@ -31,13 +44,6 @@ class Camera(
     }
 
     /**
-     * "Snaps" the camera to the given newCoordiantes.
-     */
-    fun snapTo(newCoordinates: Coordinates) {
-        coordinates = newCoordinates
-    }
-
-    /**
      * Snaps to the coupled Actor (does nothing if no coupled actor).
      */
     fun snap() {
@@ -45,16 +51,9 @@ class Camera(
     }
 
     /**
-     * Couples the Camera to the given actor until decoupled.
+     * "Snaps" the camera to the given newCoordiantes.
      */
-    fun coupleTo(actor: Actor) {
-        coupledToOrNull = actor
-    }
-
-    /**
-     * Decouples the camera from an actor.
-     */
-    fun decouple() {
-        coupledToOrNull = null
+    fun snapTo(newCoordinates: Coordinates) {
+        coordinates = newCoordinates
     }
 }

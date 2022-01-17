@@ -21,6 +21,15 @@ sealed class Tilemap(
     protected var tiles: MutableList<MutableList<Tile>> = mutableListOf()
 
     /**
+     * Returns all Tiles of the given type.
+     */
+    fun allTilesOfType(tileType: TileType): List<Tile> {
+        return tiles
+            .flatten()
+            .filter { it.tileType == tileType }
+    }
+
+    /**
      * Returns the Bounds of the Tilemap.
      */
     fun bounds(): Bounds {
@@ -28,45 +37,6 @@ sealed class Tilemap(
             xRange = 0 until width,
             yRange = 0 until height
         )
-    }
-
-    /**
-     * Sets a tile at coordinates to the contents of newTile. Returns true on success; false on failure.
-     */
-    fun setTile(
-        coordinates: Coordinates,
-        newTile: Tile,
-    ): Boolean {
-        getTileOrNull(coordinates)
-            ?.coordinates
-            ?.let { target ->
-                tiles[target.y][target.x] = newTile
-                return true
-            }
-        return false
-    }
-
-    /**
-     * Returns true if the coordinates are in-bounds. getTileOrNull() serves as an inBounds check as well.
-     */
-    fun inBounds(coordinates: Coordinates): Boolean {
-        return coordinates.x >= 0 && coordinates.y >= 0 && coordinates.x < width && coordinates.y < height
-    }
-
-    /**
-     * Returns a 1D list of all Tiles.
-     */
-    fun flattened(): List<Tile> {
-        return tiles.flatten()
-    }
-
-    /**
-     * Returns all Tiles of the given type.
-     */
-    fun allTilesOfType(tileType: TileType): List<Tile> {
-        return tiles
-            .flatten()
-            .filter { it.tileType == tileType }
     }
 
     /**
@@ -88,50 +58,6 @@ sealed class Tilemap(
             if (player.canSee(tile.coordinates, game))
                 tile.seen()
         }
-    }
-
-    /**
-     * Returns all Tiles within a given radius around a given origin.
-     */
-    fun tilesInRadius(
-        origin: Coordinates,
-        inRadius: Int
-    ): List<Tile> {
-        return tiles.asSequence()
-            .flatten()
-            .filter { origin.chebyshevDistance(it.coordinates) <= inRadius }
-            .toList()
-    }
-
-    /**
-     * Returns the Tile at the given coordinates, or null if it can't be found.
-     */
-    fun getTileOrNull(
-        coordinates: Coordinates,
-    ): Tile? {
-        return tiles
-            .flatten()
-            .firstOrNull { it.coordinates == coordinates }
-    }
-
-    /**
-     * Returns a random Tile of the given type.
-     */
-    fun randomTileOfType(tileType: TileType): Tile {
-        return tiles
-            .flatten()
-            .filter { it.tileType == tileType }
-            .random()
-    }
-
-    /**
-     * Returns a random Passable tile.
-     */
-    fun randomPassableTile(): Tile {
-        return tiles
-            .flatten()
-            .filter { it.isPassable }
-            .random()
     }
 
     /**
@@ -169,12 +95,10 @@ sealed class Tilemap(
     }
 
     /**
-     * Returns true is the given Coordinates are an edge point.
+     * Returns a 1D list of all Tiles.
      */
-    private fun isEdgePoint(coordinates: Coordinates): Boolean {
-        val x = coordinates.x
-        val y = coordinates.y
-        return x == 0 || y == 0 || x == width - 1 || y == height - 1
+    fun flattened(): List<Tile> {
+        return tiles.flatten()
     }
 
     /**
@@ -194,6 +118,82 @@ sealed class Tilemap(
             newMap.add(newRow)
         }
         return newMap
+    }
+
+    /**
+     * Returns the Tile at the given coordinates, or null if it can't be found.
+     */
+    fun getTileOrNull(
+        coordinates: Coordinates,
+    ): Tile? {
+        return tiles
+            .flatten()
+            .firstOrNull { it.coordinates == coordinates }
+    }
+
+    /**
+     * Returns true if the coordinates are in-bounds. getTileOrNull() serves as an inBounds check as well.
+     */
+    fun inBounds(coordinates: Coordinates): Boolean {
+        return coordinates.x >= 0 && coordinates.y >= 0 && coordinates.x < width && coordinates.y < height
+    }
+
+    /**
+     * Returns true is the given Coordinates are an edge point.
+     */
+    private fun isEdgePoint(coordinates: Coordinates): Boolean {
+        val x = coordinates.x
+        val y = coordinates.y
+        return x == 0 || y == 0 || x == width - 1 || y == height - 1
+    }
+
+    /**
+     * Returns a random Passable tile.
+     */
+    fun randomPassableTile(): Tile {
+        return tiles
+            .flatten()
+            .filter { it.isPassable }
+            .random()
+    }
+
+    /**
+     * Returns a random Tile of the given type.
+     */
+    fun randomTileOfType(tileType: TileType): Tile {
+        return tiles
+            .flatten()
+            .filter { it.tileType == tileType }
+            .random()
+    }
+
+    /**
+     * Sets a tile at coordinates to the contents of newTile. Returns true on success; false on failure.
+     */
+    fun setTile(
+        coordinates: Coordinates,
+        newTile: Tile,
+    ): Boolean {
+        getTileOrNull(coordinates)
+            ?.coordinates
+            ?.let { target ->
+                tiles[target.y][target.x] = newTile
+                return true
+            }
+        return false
+    }
+
+    /**
+     * Returns all Tiles within a given radius around a given origin.
+     */
+    fun tilesInRadius(
+        origin: Coordinates,
+        inRadius: Int
+    ): List<Tile> {
+        return tiles.asSequence()
+            .flatten()
+            .filter { origin.chebyshevDistance(it.coordinates) <= inRadius }
+            .toList()
     }
 
     /**

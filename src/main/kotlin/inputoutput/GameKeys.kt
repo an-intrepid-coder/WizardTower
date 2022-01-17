@@ -110,17 +110,6 @@ class GameKeys {
     )
 
     /**
-     * Returns the GameKeyLabel bound to the given key or null.
-     */
-    fun gameKeyLabelFromBoundKeyOrNull(key: Key): GameKeyLabel? {
-        for (entry in rebindableKeymap) {
-            if (entry.value == key)
-                return entry.key
-        }
-        return null
-    }
-
-    /**
      * Returns an appropriate Direction from a movement key, or null.
      */
     fun directionFromKeyOrNull(key: Key): Direction? {
@@ -153,6 +142,17 @@ class GameKeys {
             rebindableKeymap[GameKeyLabel.ALT_MOVE_DOWNRIGHT] to Direction.DownRight(),
         )
         return movementKeysToDirections[key]
+    }
+
+    /**
+     * Returns the GameKeyLabel bound to the given key or null.
+     */
+    fun gameKeyLabelFromBoundKeyOrNull(key: Key): GameKeyLabel? {
+        for (entry in rebindableKeymap) {
+            if (entry.value == key)
+                return entry.key
+        }
+        return null
     }
 
     /**

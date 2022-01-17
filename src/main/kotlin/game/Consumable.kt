@@ -12,8 +12,14 @@ class Consumable(
     var maxCharges: Int,
     var containedWithin: MutableList<Consumable>,
 ) {
-    override fun toString(): String {
-        return name
+    /**
+     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
+     */
+    fun changeCharges(amount: Int) {
+        charges = charges
+            .plus(amount)
+            .coerceAtMost(maxCharges)
+            .coerceAtLeast(0)
     }
 
     /**
@@ -33,16 +39,6 @@ class Consumable(
     }
 
     /**
-     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
-     */
-    fun changeCharges(amount: Int) {
-        charges = charges
-            .plus(amount)
-            .coerceAtMost(maxCharges)
-            .coerceAtLeast(0)
-    }
-
-    /**
      * Invokes the Consumable's Ability.
      */
     fun use(game: WizardTowerGame, user: Actor, target: Actor?) {
@@ -58,5 +54,9 @@ class Consumable(
                 containedWithin.remove(this)
             }
         }
+    }
+
+    override fun toString(): String {
+        return name
     }
 }

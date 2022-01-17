@@ -48,19 +48,31 @@ class WizardTowerGame {
     var abilityLabels by mutableStateOf(listOf<LabeledTextDataBundle>())
 
     /**
+     * Returns the Actor at the given Coordinates or null.
+     */
+    private fun actorAtCoordinatesOrNull(coordinates: Coordinates): Actor? {
+        return scene.actors.firstOrNull { it.coordinates == coordinates }
+    }
+
+    /**
+     * Runs the behavior function for each Actor in the game which has one.
+     */
+    private fun behaviorCheck() {
+        scene.actors
+            .asSequence()
+            .filter { it.behavior != null }
+            .forEach { actor ->
+                actor.behavior!!(this, actor)
+            }
+    }
+
+    /**
      * Returns true if the game is over.
      *
      * todo: implement -- this is a placeholder.
      */
     fun gameOver(): Boolean {
         return false
-    }
-
-    /**
-     * Returns the Actor at the given Coordinates or null.
-     */
-    private fun actorAtCoordinatesOrNull(coordinates: Coordinates): Actor? {
-        return scene.actors.firstOrNull { it.coordinates == coordinates }
     }
 
     /**
@@ -89,6 +101,47 @@ class WizardTowerGame {
     }
 
     /**
+     * Handles user input for the Abilities Input Mode.
+     */
+    private fun handleInputAbilitiesMode(
+        keyEvent: KeyEvent,
+    ) {
+        when (keyEvent.key in gameKeys.alphabeticalKeys) {
+            true -> {
+                // Get the index of the item selected:
+                val abilitiesIndex = gameKeys.alphabeticalKeys
+                    .zip(0 until MAX_INVENTORY_SIZE)
+                    .first { it.first == keyEvent.key }
+                    .second
+
+                val player = getPlayer()
+
+                // Out-of-bounds check:
+                if (abilitiesIndex >= player.abilities.size)
+                    return
+
+                val ability = player.abilities[abilitiesIndex]
+
+                val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
+
+                ability.effect(this, player, targetOrNull)
+
+                // Send the player back to the main interface afterwards:
+                inputMode = InputMode.NORMAL
+
+                // Counts as a turn:
+                inputLocked = true
+            }
+            else -> {
+                if (keyEvent.key == Key.Escape) {
+                    inputMode = InputMode.NORMAL
+                    syncGui()
+                }
+            }
+        }
+    }
+
+    /**
      * Handles user input when the Input Mode is set to Bind Key.
      */
     private fun handleInputBindKeyMode(keyEvent: KeyEvent) {
@@ -110,28 +163,42 @@ class WizardTowerGame {
     }
 
     /**
-     * Wraps everything which needs to happen after a turn advances. Still using a simple time system where player
-     * goes first and all enemies go afterwards in a pretty arbitrary order. I will implement a more advanced time
-     * system at some point.
+     * Handles user input for the Inventory Input Mode.
      */
-    private fun processTurn() {
-        behaviorCheck()
-        scene.removeDeadActors()
-        turn++
-        syncGui()
-        inputLocked = false
-    }
+    private fun handleInputInventoryMode(keyEvent: KeyEvent) {
+        when (keyEvent.key in gameKeys.alphabeticalKeys) {
+            true -> {
+                // Get the index of the item selected:
+                val inventoryIndex = gameKeys.alphabeticalKeys
+                    .zip(0 until MAX_INVENTORY_SIZE)
+                    .first { it.first == keyEvent.key }
+                    .second
 
-    /**
-     * Runs the behavior function for each Actor in the game which has one.
-     */
-    private fun behaviorCheck() {
-        scene.actors
-            .asSequence()
-            .filter { it.behavior != null }
-            .forEach { actor ->
-                actor.behavior!!(this, actor)
+                val player = getPlayer()
+
+                // Out-of-bounds check:
+                if (inventoryIndex >= player.inventory!!.size)
+                    return
+
+                val item = player.inventory!![inventoryIndex]
+
+                val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
+
+                item.use(this, player, targetOrNull)
+
+                // Send the player back to the main interface afterwards:
+                inputMode = InputMode.NORMAL
+
+                // Counts as a turn:
+                inputLocked = true
             }
+            else -> {
+                if (keyEvent.key == Key.Escape) {
+                    inputMode = InputMode.NORMAL
+                    syncGui()
+                }
+            }
+        }
     }
 
     /**
@@ -281,112 +348,6 @@ class WizardTowerGame {
     }
 
     /**
-     * Handles user input for the Abilities Input Mode.
-     */
-    private fun handleInputAbilitiesMode(
-        keyEvent: KeyEvent,
-    ) {
-        when (keyEvent.key in gameKeys.alphabeticalKeys) {
-            true -> {
-                // Get the index of the item selected:
-                val abilitiesIndex = gameKeys.alphabeticalKeys
-                    .zip(0 until MAX_INVENTORY_SIZE)
-                    .first { it.first == keyEvent.key }
-                    .second
-
-                val player = getPlayer()
-
-                // Out-of-bounds check:
-                if (abilitiesIndex >= player.abilities.size)
-                    return
-
-                val ability = player.abilities[abilitiesIndex]
-
-                val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
-
-                ability.effect(this, player, targetOrNull)
-
-                // Send the player back to the main interface afterwards:
-                inputMode = InputMode.NORMAL
-
-                // Counts as a turn:
-                inputLocked = true
-            }
-            else -> {
-                if (keyEvent.key == Key.Escape) {
-                    inputMode = InputMode.NORMAL
-                    syncGui()
-                }
-            }
-        }
-    }
-
-    /**
-     * Handles user input for the Inventory Input Mode.
-     */
-    private fun handleInputInventoryMode(keyEvent: KeyEvent) {
-        when (keyEvent.key in gameKeys.alphabeticalKeys) {
-            true -> {
-                // Get the index of the item selected:
-                val inventoryIndex = gameKeys.alphabeticalKeys
-                    .zip(0 until MAX_INVENTORY_SIZE)
-                    .first { it.first == keyEvent.key }
-                    .second
-
-                val player = getPlayer()
-
-                // Out-of-bounds check:
-                if (inventoryIndex >= player.inventory!!.size)
-                    return
-
-                val item = player.inventory!![inventoryIndex]
-
-                val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
-
-                item.use(this, player, targetOrNull)
-
-                // Send the player back to the main interface afterwards:
-                inputMode = InputMode.NORMAL
-
-                // Counts as a turn:
-                inputLocked = true
-            }
-            else -> {
-                if (keyEvent.key == Key.Escape) {
-                    inputMode = InputMode.NORMAL
-                    syncGui()
-                }
-            }
-        }
-    }
-
-    /**
-     * Overlays all the Tiles in the display with their isPassable status.
-     */
-    private fun overlayPassableTiles(): List<List<CellDisplayBundle>> {
-        val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
-
-        return scene
-            .exportDisplayTiles()
-            .map { row ->
-                row.map { cell ->
-                    scene.tilemap.getTileOrNull(cell.coordinates)
-                        ?.let{ tile ->
-                            CellDisplayBundle(
-                                displayValue = tile.displayValue,
-                                displayColor = when (tile.isPassable) {
-                                    true -> GoGreen
-                                    else -> AlertRed
-                                },
-                                coordinates = tile.coordinates
-                            )
-                        }
-                        ?: cell
-                }
-            }
-    }
-
-    /**
      * Overlays the Actors in play on top of the tiles exported from the Tilemap and sets the
      * displayTiles variable which is used by the interface.
      */
@@ -395,9 +356,6 @@ class WizardTowerGame {
 
         // Calculate the Field of View:
         scene.tilemap.calculateFieldOfView(player, this)
-
-        // Grab exported tiles w/ a potential overlay:
-        val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
 
         // Export tiles from Tilemap with a potential overlay:
         val newTiles = when (overlayMode) {
@@ -438,7 +396,7 @@ class WizardTowerGame {
                                                     else -> scene.camera.coordinates
                                                 }
                                             )
-                                            // When there is no actor:
+                                        // When there is no actor:
                                             ?: when (!scene.cameraCoupled()) {
                                                 true ->
                                                     // Crosshairs for targeted Tile in manual targeting mode:
@@ -458,6 +416,45 @@ class WizardTowerGame {
                         ?: cell
                 }
             }
+    }
+
+    /**
+     * Overlays all the Tiles in the display with their isPassable status.
+     */
+    private fun overlayPassableTiles(): List<List<CellDisplayBundle>> {
+        val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
+
+        return scene
+            .exportDisplayTiles()
+            .map { row ->
+                row.map { cell ->
+                    scene.tilemap.getTileOrNull(cell.coordinates)
+                        ?.let{ tile ->
+                            CellDisplayBundle(
+                                displayValue = tile.displayValue,
+                                displayColor = when (tile.isPassable) {
+                                    true -> GoGreen
+                                    else -> AlertRed
+                                },
+                                coordinates = tile.coordinates
+                            )
+                        }
+                        ?: cell
+                }
+            }
+    }
+
+    /**
+     * Wraps everything which needs to happen after a turn advances. Still using a simple time system where player
+     * goes first and all enemies go afterwards in a pretty arbitrary order. I will implement a more advanced time
+     * system at some point.
+     */
+    private fun processTurn() {
+        behaviorCheck()
+        scene.removeDeadActors()
+        turn++
+        syncGui()
+        inputLocked = false
     }
 
     /**
@@ -505,9 +502,10 @@ class WizardTowerGame {
                     .coordinates
             )
         )
-        scene.camera.coupleTo(getPlayer())
 
         val player = getPlayer()
+
+        scene.camera.coupleTo(player)
 
         // For now, I'll start the player with some simple abilities/spells for testing:
         player.addAbility(Ability.MinorHealSelf())
@@ -528,10 +526,12 @@ class WizardTowerGame {
         }
 
         // Place a Barg close to the player for testing:
-        val bargSpawn = scene.tilemap.tilesInRadius(player.coordinates, 5)
+        val bargSpawn = scene.tilemap
+            .tilesInRadius(player.coordinates, 5)
             .filter { it.isPassable }
             .random()
             .coordinates
+
         scene.addActor(
             Actor.Barg(bargSpawn)
         )

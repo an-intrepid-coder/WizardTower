@@ -20,11 +20,13 @@ sealed class Direction(
     val dx: Int,
     val dy: Int,
 ) {
-    /**
-     * Returns true if the Direction has the same dx/dy as another Direction.
-     */
-    fun matches(other: Direction): Boolean {
-        return dx == other.dx && dy == other.dy
+    override fun equals(other: Any?): Boolean {
+        other as Direction
+        return this.dx == other.dx && this.dy == other.dy
+    }
+
+    override fun hashCode(): Int {
+        return 31 * dx + dy
     }
 
     class Raw(dx: Int, dy: Int) : Direction(dx, dy)

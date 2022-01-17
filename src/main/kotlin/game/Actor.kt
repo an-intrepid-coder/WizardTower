@@ -3,7 +3,7 @@ package game
 import androidx.compose.ui.graphics.Color
 import inputoutput.*
 
-// These are both limitations of the way I am handling input at the moment and I may change that in the future.
+// These are both limitations of the way I am handling input at the moment, and I may change that in the future.
 const val MAX_INVENTORY_SIZE = 26
 const val MAX_ABILITIES = 26
 
@@ -51,18 +51,19 @@ sealed class Actor(
     var behavior: ((WizardTowerGame, Actor) -> Unit)? = null, // format: (Game, Self)
 ) {
     /**
-     * Removes an item from the Actor's inventory, if possible.
-     */
-    fun removeAbility(ability: Ability) {
-        abilities.remove(ability)
-    }
-
-    /**
      * Adds an ability to the Actor's inventory, if possible.
      */
     fun addAbility(ability: Ability) {
         if (abilities.size < MAX_ABILITIES)
             abilities.add(ability)
+    }
+
+    /**
+     * Adds an item to the Actor's inventory, if possible.
+     */
+    fun addConsumable(item: Consumable) {
+        if (hasInventory() && inventory!!.size < MAX_INVENTORY_SIZE)
+            inventory!!.add(item)
     }
 
     /**
@@ -79,10 +80,41 @@ sealed class Actor(
     }
 
     /**
-     * Sets the Actor's health to 0.
+     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
      */
-    fun kill() {
-        health = 0
+    fun changeAbilityPoints(amount: Int) {
+        abilityPoints = abilityPoints
+            .plus(amount)
+            .coerceAtMost(maxAbilityPoints)
+            .coerceAtLeast(0)
+    }
+
+    /**
+     * Changes the Actor's gold. Does not allow gold to go below 0.
+     */
+    fun changeGold(amount: Int) {
+        gold = gold
+            .plus(amount)
+            .coerceAtLeast(0)
+    }
+
+    /**
+     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
+     */
+    fun changeHealth(amount: Int) {
+        health = health
+            .plus(amount)
+            .coerceAtMost(maxHealth)
+            .coerceAtLeast(0)
+    }
+
+    /**
+     * Describes the Actor with a list of Messages.
+     */
+    fun describe(): List<Message> {
+        val messages = mutableListOf<Message>()
+        // todo: implement
+        return messages
     }
 
     /**
@@ -93,19 +125,17 @@ sealed class Actor(
     }
 
     /**
-     * Removes an item from the Actor's inventory, if possible.
+     * Returns true if the Actor has greater than 0 health.
      */
-    fun removeConsumable(item: Consumable) {
-        if (hasInventory() && inventory!!.contains(item))
-            inventory!!.remove(item)
+    fun isAlive(): Boolean {
+        return health > 0
     }
 
     /**
-     * Adds an item to the Actor's inventory, if possible.
+     * Sets the Actor's health to 0.
      */
-    fun addConsumable(item: Consumable) {
-        if (hasInventory() && inventory!!.size < MAX_INVENTORY_SIZE)
-            inventory!!.add(item)
+    fun kill() {
+        health = 0
     }
 
     /**
@@ -131,7 +161,7 @@ sealed class Actor(
                     .actors
                     .firstOrNull { it.coordinates == tile.coordinates }
 
-                if (direction.matches(Direction.Stationary()) || (tile.isPassable && maybeActor == null)) {
+                if (direction == Direction.Stationary() || (tile.isPassable && maybeActor == null)) {
                     coordinates = target
                     moved = true
                 } else if (maybeActor != null && wouldFight(maybeActor)) {
@@ -161,22 +191,42 @@ sealed class Actor(
     }
 
     /**
-     * Compares two actors to determine if movement-collisions result in combat.
-     *
-     * Note: Eventually I will have a more fine-grained faction system than just Player/Neutral/Hostile.
+     * Moves the Actor towards the first Tile in their saved path.
      */
-    private fun wouldFight(actor: Actor): Boolean {
-        return (maybeFaction == Faction.PLAYER && actor.maybeFaction == Faction.HOSTILE)
-                || (maybeFaction == Faction.HOSTILE && actor.maybeFaction == Faction.PLAYER)
+    fun moveAlongPath(game: WizardTowerGame) {
+        if (path == null)
+            return
+        else if (path!!.isEmpty())
+            return
+
+        val directionToMove = coordinates
+            .relativeTo(path!!.first())
+
+        move(directionToMove, game)
+        path!!.removeFirst()
     }
 
     /**
-     * Describes the Actor with a list of Messages.
+     * Moves the Actor in a random direction.
      */
-    fun describe(): List<Message> {
-        val messages = mutableListOf<Message>()
-        // todo: implement
-        return messages
+    fun moveRandom(game: WizardTowerGame) {
+        val directionToMove = allDirections.random()
+        move(directionToMove, game)
+    }
+
+    /**
+     * Removes an item from the Actor's inventory, if possible.
+     */
+    fun removeAbility(ability: Ability) {
+        abilities.remove(ability)
+    }
+
+    /**
+     * Removes an item from the Actor's inventory, if possible.
+     */
+    fun removeConsumable(item: Consumable) {
+        if (hasInventory() && inventory!!.contains(item))
+            inventory!!.remove(item)
     }
 
     /**
@@ -195,63 +245,13 @@ sealed class Actor(
     }
 
     /**
-     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
+     * Compares two actors to determine if movement-collisions result in combat.
+     *
+     * Note: Eventually I will have a more fine-grained faction system than just Player/Neutral/Hostile.
      */
-    fun changeAbilityPoints(amount: Int) {
-        abilityPoints = abilityPoints
-            .plus(amount)
-            .coerceAtMost(maxAbilityPoints)
-            .coerceAtLeast(0)
-    }
-
-    /**
-     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
-     */
-    fun changeHealth(amount: Int) {
-        health = health
-            .plus(amount)
-            .coerceAtMost(maxHealth)
-            .coerceAtLeast(0)
-    }
-
-    /**
-     * Returns true if the Actor has greater than 0 health.
-     */
-    fun isAlive(): Boolean {
-        return health > 0
-    }
-
-    /**
-     * Changes the Actor's gold. Does not allow gold to go below 0.
-     */
-    fun changeGold(amount: Int) {
-        gold = gold
-            .plus(amount)
-            .coerceAtLeast(0)
-    }
-
-    /**
-     * Moves the Actor in a random direction.
-     */
-    fun moveRandom(game: WizardTowerGame) {
-        val directionToMove = allDirections.random()
-        move(directionToMove, game)
-    }
-
-    /**
-     * Moves the Actor towards the first Tile in their saved path.
-     */
-    fun moveAlongPath(game: WizardTowerGame) {
-        if (path == null)
-            return
-        else if (path!!.isEmpty())
-            return
-
-        val directionToMove = coordinates
-            .relativeTo(path!!.first())
-
-        move(directionToMove, game)
-        path!!.removeFirst()
+    private fun wouldFight(actor: Actor): Boolean {
+        return (maybeFaction == Faction.PLAYER && actor.maybeFaction == Faction.HOSTILE)
+                || (maybeFaction == Faction.HOSTILE && actor.maybeFaction == Faction.PLAYER)
     }
 
     /**
@@ -302,34 +302,6 @@ sealed class Actor(
     )
 
     /**
-     * A literal target for practice.
-     */
-    class Target(
-        coordinates: Coordinates
-    ) : Actor(
-        name = "Practice Target",
-        coordinates = coordinates,
-        displayValue = "p",
-        displayColor = White,
-        maybeFaction = Faction.HOSTILE,
-        health = 10,
-        maxHealth = 10,
-        abilityPoints = 0,
-        maxAbilityPoints = 0,
-        behavior = { game, self ->
-            val fluffChanceOutOf100 = 1
-            if (game.getPlayer().canSee(self.coordinates, game) && withChance(100, fluffChanceOutOf100))
-                game.messageLog.addMessage(
-                    Message(
-                        turn = game.turn,
-                        text = "The practice target exists.",
-                        textColor = BrightBlue,
-                    )
-                )
-        }
-    )
-
-    /**
      * The Player Actor.
      */
     class Player(
@@ -373,4 +345,32 @@ sealed class Actor(
             )
         }
     }
+
+    /**
+     * A literal target for practice.
+     */
+    class Target(
+        coordinates: Coordinates
+    ) : Actor(
+        name = "Practice Target",
+        coordinates = coordinates,
+        displayValue = "p",
+        displayColor = White,
+        maybeFaction = Faction.HOSTILE,
+        health = 10,
+        maxHealth = 10,
+        abilityPoints = 0,
+        maxAbilityPoints = 0,
+        behavior = { game, self ->
+            val fluffChanceOutOf100 = 1
+            if (game.getPlayer().canSee(self.coordinates, game) && withChance(100, fluffChanceOutOf100))
+                game.messageLog.addMessage(
+                    Message(
+                        turn = game.turn,
+                        text = "The practice target exists.",
+                        textColor = BrightBlue,
+                    )
+                )
+        }
+    )
 }

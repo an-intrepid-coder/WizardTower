@@ -14,22 +14,6 @@ sealed class Scene(
     var consumables: MutableList<Consumable>,
 ) {
     /**
-     * Exports the slice of the Tilemap which is to be displayed.
-     */
-    fun exportDisplayTiles(): List<List<CellDisplayBundle>> {
-        return tilemap.exportTilesToCompose(camera.coordinates, mapDisplayWidthNormal, mapDisplayHeightNormal)
-    }
-
-    /**
-     * Removes all dead actors and items from the game.
-     */
-    fun removeDeadActors() {
-        actors = actors
-            .filter { it.isAlive() }
-            .toMutableList()
-    }
-
-    /**
      * Adds the player to the game.
      */
     fun addActor(actor: Actor) {
@@ -44,10 +28,26 @@ sealed class Scene(
     }
 
     /**
+     * Exports the slice of the Tilemap which is to be displayed.
+     */
+    fun exportDisplayTiles(): List<List<CellDisplayBundle>> {
+        return tilemap.exportTilesToCompose(camera.coordinates, mapDisplayWidthNormal, mapDisplayHeightNormal)
+    }
+
+    /**
      * Moves the camera in the given direction/
      */
     fun moveCamera(direction: Direction) {
         camera.move(direction, tilemap)
+    }
+
+    /**
+     * Removes all dead actors and items from the game.
+     */
+    fun removeDeadActors() {
+        actors = actors
+            .filter { it.isAlive() }
+            .toMutableList()
     }
 
     class DebugArena : Scene(

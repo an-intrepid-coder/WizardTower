@@ -26,11 +26,13 @@ sealed class Tile(
     var blocksSight: Boolean = false
 ) {
     /**
-     * Marks the tile as being seen by the player.
+     * Returns either the natural displayColor of the Tile or randomFoggyColor().
      */
-    fun seen() {
-        visibleToPlayer = true
-        explored = true
+    private fun cellColor(): Color {
+        return if (visibleToPlayer)
+            displayColor
+        else
+            randomFoggyColor()
     }
 
     /**
@@ -43,13 +45,16 @@ sealed class Tile(
     }
 
     /**
-     * Returns either the natural displayColor of the Tile or randomFoggyColor().
+     * Returns a representation of the Tile altered for the targeting interface.
      */
-    private fun cellColor(): Color {
-        return if (visibleToPlayer)
-            displayColor
-        else
-            randomFoggyColor()
+    fun targetedCell(
+        displayValue: String,
+    ): CellDisplayBundle {
+        return CellDisplayBundle(
+            displayValue = displayValue,
+            displayColor = BrightPurple,
+            coordinates = coordinates,
+        )
     }
 
     /**
@@ -64,16 +69,11 @@ sealed class Tile(
     }
 
     /**
-     * Returns a representation of the Tile altered for the targeting interface.
+     * Marks the tile as being seen by the player.
      */
-    fun targetedCell(
-        displayValue: String,
-    ): CellDisplayBundle {
-        return CellDisplayBundle(
-            displayValue = displayValue,
-            displayColor = BrightPurple,
-            coordinates = coordinates,
-        )
+    fun seen() {
+        visibleToPlayer = true
+        explored = true
     }
 
     /**

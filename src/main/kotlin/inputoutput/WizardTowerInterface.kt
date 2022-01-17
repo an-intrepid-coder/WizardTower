@@ -36,7 +36,7 @@ fun WizardTowerInterface(
                             .plus(
                                 listOf(
                                     LabeledTextDataBundle("Turn", game.turn.toString(), White),
-                                    LabeledTextDataBundle("Camera", game.scene.camera.coordinates.printed(), White),
+                                    LabeledTextDataBundle("Camera", game.scene.camera.coordinates.toString(), White),
                                     game.underCamera,
                                     game.underCameraHealth,
                                 )
