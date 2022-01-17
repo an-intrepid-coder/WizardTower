@@ -71,7 +71,7 @@ sealed class Actor(
     fun canSee(targetCoordinates: Coordinates, game: WizardTowerGame): Boolean {
         val sightLineClear = coordinates
             .bresenhamLineTo(targetCoordinates)
-            .none { game.tilemap.getTileOrNull(it)!!.blocksSight }
+            .none { game.scene.tilemap.getTileOrNull(it)!!.blocksSight }
 
         val targetInRange = targetCoordinates.chebyshevDistance(coordinates) <= defaultVisionRangeRadius
 
@@ -123,10 +123,11 @@ sealed class Actor(
             y = coordinates.y + direction.dy
         )
         var moved = false
-        game.tilemap
+        game.scene.tilemap
             .getTileOrNull(target)
             ?.let { tile ->
                 val maybeActor = game
+                    .scene
                     .actors
                     .firstOrNull { it.coordinates == tile.coordinates }
 

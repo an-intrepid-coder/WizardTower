@@ -16,16 +16,23 @@ sealed class AStarPath(
     game: WizardTowerGame,
     actor: Actor? = null,
     /*
-        Heuristic Function should take the form of (Start, Goal, Game). The default only looks for
+        Heuristic Function should take the form of (Node, Goal, Game). The default only looks for
         the shortest passable distance.
      */
     heuristicFunction: (Coordinates, Coordinates, WizardTowerGame) -> Int = { node, goal, game ->
-        val maybeTile = game.tilemap
+        val maybeTile = game.scene.tilemap
             .getTileOrNull(node)
+
+        val actorOnNode = game
+            .scene
+            .actors
+            .any{ it.coordinates == node && node != goal && node != waypoints.first() }
 
         if (maybeTile == null)
             scoreDefault
         else if (!maybeTile.isPassable)
+            scoreDefault
+        else if (actorOnNode)
             scoreDefault
         else
             node.chebyshevDistance(goal)
@@ -101,7 +108,7 @@ sealed class AStarPath(
 
                 val gScoreCurrent = gScore.getOrElse(currentNode) { scoreDefault }
 
-                val bounds = game.tilemap.bounds()
+                val bounds = game.scene.tilemap.bounds()
                 currentNode.neighbors(bounds).forEach { node ->
                     val gScoreNode = gScore.getOrElse(node) { scoreDefault }
                     val tentativeGScore = gScoreCurrent + currentNode.chebyshevDistance(node)

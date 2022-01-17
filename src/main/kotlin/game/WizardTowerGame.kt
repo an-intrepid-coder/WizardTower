@@ -21,27 +21,13 @@ enum class InputMode {
     BIND_KEY,
 }
 
-fun targetedTile(
-    coordinates: Coordinates,
-    displayValue: String,
-): CellDisplayBundle {
-    return CellDisplayBundle(
-        displayValue = displayValue,
-        displayColor = BrightPurple,
-        coordinates = coordinates,
-    )
-}
-
 val defaultUnderCameraLabel = LabeledTextDataBundle("Under Camera", "N/A", White)
 val defaultUnderCameraHealthLabel = LabeledTextDataBundle("Health", "N/A", White)
 
 @OptIn(ExperimentalComposeUiApi::class)
 class WizardTowerGame {
     // Game Data:
-    val tilemap = Tilemap.DebugArena()
-    val camera = Camera(Coordinates(0, 0))
-    var actors = mutableListOf<Actor>()
-    var consumables = mutableListOf<Consumable>()
+    var scene = Scene.DebugArena()
     val messageLog = MessageLog()
     var targetPathOverlayToggled = false
     var inputLocked = false
@@ -49,8 +35,8 @@ class WizardTowerGame {
     var maybeRebindingKey: GameKeyLabel? = null
 
     // Data to export to the GUI:
-    var displayTiles by mutableStateOf(tilemap.exportTilesToCompose(camera.coordinates, tilemap.width, tilemap.height))
-    var currentBackgroundColor by mutableStateOf(tilemap.backgroundColor)
+    var displayTiles by mutableStateOf(scene.exportDisplayTiles())
+    var currentBackgroundColor by mutableStateOf(scene.tilemap.backgroundColor)
     var overlayMode = OverlayType.NONE
     var inputMode = InputMode.NORMAL
     var displayMessages by mutableStateOf(messageLog.exportMessages())
@@ -74,14 +60,15 @@ class WizardTowerGame {
      * Returns the Actor at the given Coordinates or null.
      */
     private fun actorAtCoordinatesOrNull(coordinates: Coordinates): Actor? {
-        return actors.firstOrNull { it.coordinates == coordinates }
+        return scene.actors.firstOrNull { it.coordinates == coordinates }
     }
 
     /**
      * Returns the player from the actor pool.
      */
     fun getPlayer(): Actor {
-        return actors
+        return scene
+            .actors
             .firstOrNull{ it.isPlayer }
             ?: error("Player not found.")
     }
@@ -129,7 +116,7 @@ class WizardTowerGame {
      */
     private fun processTurn() {
         behaviorCheck()
-        removeDeadActors()
+        scene.removeDeadActors()
         turn++
         syncGui()
         inputLocked = false
@@ -139,21 +126,12 @@ class WizardTowerGame {
      * Runs the behavior function for each Actor in the game which has one.
      */
     private fun behaviorCheck() {
-        actors
+        scene.actors
             .asSequence()
             .filter { it.behavior != null }
             .forEach { actor ->
                 actor.behavior!!(this, actor)
             }
-    }
-
-    /**
-     * Removes all dead actors and items from the game.
-     */
-    private fun removeDeadActors() {
-        actors = actors
-            .filter { it.isAlive() }
-            .toMutableList()
     }
 
     /**
@@ -181,8 +159,8 @@ class WizardTowerGame {
         when (directionOrNull != null) {
             true -> {
                 // Movement keys using Vi keys or the NumPad:
-                if (camera.coupledToOrNull == null) {
-                    camera.move(directionOrNull, tilemap)
+                if (!scene.cameraCoupled()) {
+                    scene.moveCamera(directionOrNull)
                     syncGui()
                 }
                 else if (player.move(directionOrNull, this)) {
@@ -196,11 +174,11 @@ class WizardTowerGame {
                 when (gameKeys.gameKeyLabelFromBoundKeyOrNull(keyEvent.key)) {
                     // Toggle manual targeting mode:
                     GameKeyLabel.TOGGLE_MANUAL_CAMERA -> {
-                        if (camera.coupledToOrNull != null) {
-                            camera.decouple()
+                        if (scene.cameraCoupled()) {
+                            scene.camera.decouple()
                             messageLog.addMessage(Message(turn, "Manual targeting mode enabled.", White))
                         } else {
-                            camera.coupleTo(getPlayer())
+                            scene.camera.coupleTo(player)
                             messageLog.addMessage(Message(turn, "Manual targeting mode disabled.", White))
                         }
                         syncGui()
@@ -209,7 +187,7 @@ class WizardTowerGame {
                     // Toggle "path" overlay for a target in manual targeting mode:
                     GameKeyLabel.TOGGLE_TARGET_PATH -> {
                         // Only works if the camera is decoupled (manual targeting mode):
-                        if (camera.coupledToOrNull == null) {
+                        if (!scene.cameraCoupled()) {
                             targetPathOverlayToggled = !targetPathOverlayToggled
                             messageLog.addMessage(Message(turn, "Toggled path-to-target overlay.", White))
                             syncGui()
@@ -219,10 +197,10 @@ class WizardTowerGame {
                     // Tab for auto-targeting:
                     GameKeyLabel.AUTO_TARGET -> {
                         // Only works if the camera is decoupled (manual targeting mode):
-                        if (camera.coupledToOrNull == null) {
-
+                        if (!scene.cameraCoupled()) {
                             // All actors in sight, ordered by distance from the player:
-                            val actorsInSight = actors
+                            val actorsInSight = scene
+                                .actors
                                 .asSequence()
                                 .filter { player.canSee(it.coordinates, this) }
                                 .sortedBy { player.coordinates.chebyshevDistance(it.coordinates) }
@@ -232,7 +210,7 @@ class WizardTowerGame {
                                 return
 
                             // Get index of "current target" if one selected:
-                            var targetIndex = actorAtCoordinatesOrNull(camera.coordinates)
+                            var targetIndex = actorAtCoordinatesOrNull(scene.camera.coordinates)
                                 ?.let { target ->
                                     actorsInSight.indices
                                         .firstOrNull { actorsInSight[it] == target }
@@ -246,7 +224,7 @@ class WizardTowerGame {
                                 .mod(actorsInSight.size)
 
                             // Snap camera to the next target:
-                            camera.snapTo(actorsInSight[targetIndex].coordinates)
+                            scene.camera.snapTo(actorsInSight[targetIndex].coordinates)
 
                             syncGui()
                         }
@@ -297,7 +275,7 @@ class WizardTowerGame {
         // If the player moved, then describe the Tile they landed on:
         // todo: descriptions not really implemented yet
         if (moved)
-            tilemap.getTileOrNull(player.coordinates)
+            scene.tilemap.getTileOrNull(player.coordinates)
                 ?.let { it.describe().forEach { messageLog.addMessage(it) } }
                 ?: error("Player not found.")
     }
@@ -324,7 +302,7 @@ class WizardTowerGame {
 
                 val ability = player.abilities[abilitiesIndex]
 
-                val targetOrNull = actorAtCoordinatesOrNull(camera.coordinates)
+                val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
 
                 ability.effect(this, player, targetOrNull)
 
@@ -363,7 +341,7 @@ class WizardTowerGame {
 
                 val item = player.inventory!![inventoryIndex]
 
-                val targetOrNull = actorAtCoordinatesOrNull(camera.coordinates)
+                val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
 
                 item.use(this, player, targetOrNull)
 
@@ -388,11 +366,11 @@ class WizardTowerGame {
     private fun overlayPassableTiles(): List<List<CellDisplayBundle>> {
         val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
 
-        return tilemap
-            .exportTilesToCompose(camera.coordinates, displayDimensions.first, displayDimensions.second)
+        return scene
+            .exportDisplayTiles()
             .map { row ->
                 row.map { cell ->
-                    tilemap.getTileOrNull(cell.coordinates)
+                    scene.tilemap.getTileOrNull(cell.coordinates)
                         ?.let{ tile ->
                             CellDisplayBundle(
                                 displayValue = tile.displayValue,
@@ -416,7 +394,7 @@ class WizardTowerGame {
         val player = getPlayer()
 
         // Calculate the Field of View:
-        tilemap.calculateFieldOfView(player, this)
+        scene.tilemap.calculateFieldOfView(player, this)
 
         // Grab exported tiles w/ a potential overlay:
         val displayDimensions = Pair(mapDisplayWidthNormal, mapDisplayHeightNormal)
@@ -424,14 +402,14 @@ class WizardTowerGame {
         // Export tiles from Tilemap with a potential overlay:
         val newTiles = when (overlayMode) {
             OverlayType.PASSABLE -> overlayPassableTiles()
-            else -> tilemap.exportTilesToCompose(camera.coordinates, displayDimensions.first, displayDimensions.second)
+            else -> scene.exportDisplayTiles()
         }
 
         // Grab the Target Path overlay if it is toggled:
         val targetLineOrNull = when (targetPathOverlayToggled) {
             true -> player.coordinates
-                .bresenhamLineTo(camera.coordinates)
-                .filter { it != player.coordinates && it != camera.coordinates }
+                .bresenhamLineTo(scene.camera.coordinates)
+                .filter { it != player.coordinates && it != scene.camera.coordinates }
             else -> null
         }
 
@@ -439,41 +417,41 @@ class WizardTowerGame {
         displayTiles = newTiles
             .map { row ->
                 row.map { cell ->
-                    tilemap
+                    scene.tilemap
                         .getTileOrNull(cell.coordinates)
                         ?.let { tile ->
                             // If the Target Path is to be overlaid on this tile:
                             if (targetLineOrNull != null && targetLineOrNull.any { it == tile.coordinates })
-                                targetedTile(tile.coordinates, "*")
+                                tile.targetedCell("*")
 
                             // Else if player can see tile:
                             else if (tile.visibleToPlayer)
-                                actors
+                                scene.actors
                                     .firstOrNull { it.coordinates == cell.coordinates }
                                     .let { maybeActor ->
                                         maybeActor
                                             // If there is an Actor on the tile:
                                             ?.toCellDisplayBundle(
                                                 overlayMode = overlayMode,
-                                                decoupledCamera = when (camera.coupledToOrNull != null) {
+                                                decoupledCamera = when (scene.cameraCoupled()) {
                                                     true -> null
-                                                    else -> camera.coordinates
+                                                    else -> scene.camera.coordinates
                                                 }
                                             )
                                             // When there is no actor:
-                                            ?: when (camera.coupledToOrNull == null) {
+                                            ?: when (!scene.cameraCoupled()) {
                                                 true ->
                                                     // Crosshairs for targeted Tile in manual targeting mode:
-                                                    if (tile.coordinates == camera.coordinates)
-                                                        targetedTile(tile.coordinates, "X")
+                                                    if (tile.coordinates == scene.camera.coordinates)
+                                                        tile.targetedCell("X")
                                                     else
                                                         cell
                                                 else -> cell
                                             }
                                     }
                             // Else if player can't see Tile, but they are targeting it manually:
-                            else if (camera.coupledToOrNull == null && tile.coordinates == camera.coordinates)
-                                targetedTile(tile.coordinates, "X")
+                            else if (!scene.cameraCoupled() && tile.coordinates == scene.camera.coordinates)
+                                tile.targetedCell("X")
                             else
                                 cell
                         }
@@ -489,7 +467,7 @@ class WizardTowerGame {
         val player = getPlayer() as Actor.Player
 
         // Snap the camera to anything it is coupled to:
-        camera.snap()
+        scene.camera.snap()
 
         // Overlay visible actors and calculate FoV:
         overlayActorsOnDisplayTiles()
@@ -501,7 +479,7 @@ class WizardTowerGame {
         playerDisplayStats = player.exportStatsToCompose()
 
         // If the player has anything under the target cursor then some info for the HUD:
-        when (val maybeActor = actorAtCoordinatesOrNull(camera.coordinates)) {
+        when (val maybeActor = actorAtCoordinatesOrNull(scene.camera.coordinates)) {
             null -> {
                 underCamera = defaultUnderCameraLabel
                 underCameraHealth = defaultUnderCameraHealthLabel
@@ -515,25 +493,19 @@ class WizardTowerGame {
         }
     }
 
-    /**
-     * Adds the player to the game.
-     */
-    private fun addActor(actor: Actor) {
-        actors.add(actor)
-    }
-
     init {
         /*
             For now, starting off with just a player in a test arena to work on mechanics and systems.
          */
-        addActor(
+        scene.addActor(
             Actor.Player(
-                tilemap
+                coordinates = scene
+                    .tilemap
                     .randomTileOfType(TileType.FLOOR)
                     .coordinates
             )
         )
-        camera.coupleTo(getPlayer())
+        scene.camera.coupleTo(getPlayer())
 
         val player = getPlayer()
 
@@ -556,11 +528,11 @@ class WizardTowerGame {
         }
 
         // Place a Barg close to the player for testing:
-        val bargSpawn = tilemap.tilesInRadius(player.coordinates, 5)
+        val bargSpawn = scene.tilemap.tilesInRadius(player.coordinates, 5)
             .filter { it.isPassable }
             .random()
             .coordinates
-        addActor(
+        scene.addActor(
             Actor.Barg(bargSpawn)
         )
 

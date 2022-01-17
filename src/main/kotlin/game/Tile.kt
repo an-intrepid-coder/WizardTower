@@ -1,6 +1,7 @@
 package game
 
 import androidx.compose.ui.graphics.Color
+import inputoutput.BrightPurple
 import inputoutput.CellDisplayBundle
 import inputoutput.White
 import inputoutput.randomFoggyColor
@@ -60,6 +61,19 @@ sealed class Tile(
                 displayColor = cellColor(),
                 coordinates = coordinates
             )
+    }
+
+    /**
+     * Returns a representation of the Tile altered for the targeting interface.
+     */
+    fun targetedCell(
+        displayValue: String,
+    ): CellDisplayBundle {
+        return CellDisplayBundle(
+            displayValue = displayValue,
+            displayColor = BrightPurple,
+            coordinates = coordinates,
+        )
     }
 
     /**
