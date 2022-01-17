@@ -20,7 +20,6 @@ fun BottomConsole(
 ) {
     LazyColumn(
         modifier = Modifier
-            //.fillMaxWidth()
             .background(DarkGray)
     ) {
         messages

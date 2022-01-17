@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "me.sgibber2018"
-version = "1.0.3"
+version = "1.0.4"
 
 repositories {
     google()
@@ -35,7 +35,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "WizardTower"
-            packageVersion = "1.0.3"
+            packageVersion = "1.0.4"
         }
     }
 }

@@ -51,9 +51,8 @@ class Consumable(
             changeCharges(-1)
 
             // Remove from containing inventory if used the last charge:
-            if (!hasCharges()) {
+            if (!hasCharges())
                 containedWithin.remove(this)
-            }
         }
     }
 }
