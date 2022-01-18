@@ -39,7 +39,7 @@ class WizardTowerGame {
     var currentBackgroundColor by mutableStateOf(scene.tilemap.backgroundColor)
     var overlayMode = OverlayType.NONE
     var inputMode = InputMode.NORMAL
-    var displayMessages by mutableStateOf(messageLog.exportMessages())
+    var displayMessages by mutableStateOf(messageLog.messages)
     var turn by mutableStateOf(0)
     var playerDisplayStats by mutableStateOf(listOf<LabeledTextDataBundle>())
     var underCamera by mutableStateOf(defaultUnderCameraLabel)
@@ -263,38 +263,38 @@ class WizardTowerGame {
 
                     // Tab for auto-targeting:
                     GameKeyLabel.AUTO_TARGET -> {
-                        // Only works if the camera is decoupled (manual targeting mode):
-                        if (!scene.cameraCoupled()) {
-                            // All actors in sight, ordered by distance from the player:
-                            val actorsInSight = scene
-                                .actors
-                                .asSequence()
-                                .filter { player.canSee(it.coordinates, this) }
-                                .sortedBy { player.coordinates.chebyshevDistance(it.coordinates) }
-                                .toList()
+                        // Decouples the camera:
+                        scene.camera.decouple()
 
-                            if (actorsInSight.isEmpty())
-                                return
+                        // All actors in sight, ordered by distance from the player:
+                        val actorsInSight = scene
+                            .actors
+                            .asSequence()
+                            .filter { player.canSee(it.coordinates, this) }
+                            .sortedBy { player.coordinates.chebyshevDistance(it.coordinates) }
+                            .toList()
 
-                            // Get index of "current target" if one selected:
-                            var targetIndex = actorAtCoordinatesOrNull(scene.camera.coordinates)
-                                ?.let { target ->
-                                    actorsInSight.indices
-                                        .firstOrNull { actorsInSight[it] == target }
-                                        ?: error("This should never happen.")
-                                }
-                                ?: 0
+                        if (actorsInSight.isEmpty())
+                            return
 
-                            // Cycle through the list:
-                            targetIndex = targetIndex
-                                .plus(1)
-                                .mod(actorsInSight.size)
+                        // Get index of "current target" if one selected:
+                        var targetIndex = actorAtCoordinatesOrNull(scene.camera.coordinates)
+                            ?.let { target ->
+                                actorsInSight.indices
+                                    .firstOrNull { actorsInSight[it] == target }
+                                    ?: error("This should never happen.")
+                            }
+                            ?: 0
 
-                            // Snap camera to the next target:
-                            scene.camera.snapTo(actorsInSight[targetIndex].coordinates)
+                        // Cycle through the list:
+                        targetIndex = targetIndex
+                            .plus(1)
+                            .mod(actorsInSight.size)
 
-                            syncGui()
-                        }
+                        // Snap camera to the next target:
+                        scene.camera.snapTo(actorsInSight[targetIndex].coordinates)
+
+                        syncGui()
                     }
 
                     // Normal overlay:
@@ -331,6 +331,12 @@ class WizardTowerGame {
                         inputMode = InputMode.ABILITIES
                         abilityLabels = player.exportAlphabetizedStrings(player.abilities)
                         messageLog.addMessage(Message(turn, "Abilities Input Mode toggled (ESC to return).", White))
+                        syncGui()
+                    }
+
+                    // Print help info:
+                    GameKeyLabel.HELP_INFO -> {
+                        printHelpInfo()
                         syncGui()
                     }
 
@@ -445,6 +451,23 @@ class WizardTowerGame {
     }
 
     /**
+     * Prints help information for the player in the Bottom Console.
+     */
+    private fun printHelpInfo() {
+        gameKeys.rebindableKeymap.forEach { entry ->
+            messageLog.addMessage(
+                Message(
+                    turn = turn,
+                    text = "${entry.key} bound to ${entry.value}",
+                    textColor = CautionYellow,
+                )
+            )
+        }
+        messageLog.addMessage(Message(turn, "Rebind keys by pressing Shift + <Key> and then Ctrl + <New Key>", BrightBlue))
+        messageLog.addMessage(Message(turn, "Help Info Complete!", BrightPurple))
+    }
+
+    /**
      * Wraps everything which needs to happen after a turn advances. Still using a simple time system where player
      * goes first and all enemies go afterwards in a pretty arbitrary order. I will implement a more advanced time
      * system at some point.
@@ -470,7 +493,7 @@ class WizardTowerGame {
         overlayActorsOnDisplayTiles()
 
         // Prepare the Bottom Console:
-        displayMessages = messageLog.exportMessages()
+        displayMessages = messageLog.messages
 
         // Prepare the player's stats for the HUD:
         playerDisplayStats = player.exportStatsToCompose()
@@ -491,6 +514,9 @@ class WizardTowerGame {
     }
 
     init {
+        messageLog.addMessage(Message(turn, "Welcome to Wizard Tower!", BrightPurple))
+        messageLog.addMessage(Message(turn, "(press F12 for help and commands)", BrightBlue))
+
         /*
             For now, starting off with just a player in a test arena to work on mechanics and systems.
          */

@@ -50,6 +50,8 @@ enum class GameKeyLabel {
     ABILITIES_MENU,
 
     INVENTORY_MENU,
+
+    HELP_INFO,
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -107,6 +109,8 @@ class GameKeys {
 
         GameKeyLabel.ABILITIES_MENU to Key.A,
         GameKeyLabel.INVENTORY_MENU to Key.I,
+
+        GameKeyLabel.HELP_INFO to Key.F12,
     )
 
     /**

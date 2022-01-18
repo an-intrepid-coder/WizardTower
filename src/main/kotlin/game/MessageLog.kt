@@ -1,7 +1,6 @@
 package game
 
 import androidx.compose.ui.graphics.Color
-import inputoutput.BrightPurple
 
 /**
  * Contains a turn-stamped, colored message.
@@ -19,15 +18,10 @@ data class Message(
 class MessageLog {
     val messages = mutableListOf<Message>()
 
+    /**
+     * Adds a message to the log.
+     */
     fun addMessage(msg: Message) {
         messages.add(msg)
-    }
-
-    fun exportMessages(): List<Message> {
-        return messages.toList()
-    }
-
-    init {
-        addMessage(Message(0, "Welcome to Wizard Tower!", BrightPurple))
     }
 }
