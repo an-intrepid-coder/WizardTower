@@ -120,10 +120,32 @@ class WizardTowerGame {
                 if (abilitiesIndex >= player.abilities.size)
                     return
 
+                // Get the ability from the player:
                 val ability = player.abilities[abilitiesIndex]
 
+                // Ability components check:
+                if (!ability.canCast(player)) {
+                    player.componentFlags
+                        .filter { !it.value && it.key in ability.componentRequirements }
+                        .keys
+                        .forEach{ component ->
+                            messageLog.addMessage(
+                                Message(
+                                    turn = turn,
+                                    text = "Component Inhibited: $component.",
+                                    textColor = AlertRed,
+                                )
+                            )
+                        }
+                    inputMode = InputMode.NORMAL
+                    syncGui()
+                    return
+                }
+
+                // Get the target at the camera location, if any:
                 val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
 
+                // Apply the ability's effect:
                 ability.effect(this, player, targetOrNull)
 
                 // Send the player back to the main interface afterwards:

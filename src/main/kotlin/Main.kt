@@ -8,10 +8,10 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import inputoutput.WizardTowerInterface
 
-fun main() = application {
-    // The game is the "back end" of the application:
-    val game = WizardTowerGame()
+// The game is the "back end" of the application:
+val game = WizardTowerGame()
 
+fun main() = application {
     // The Composable Interface is the "front end" of the application:
     Window(
         onCloseRequest = ::exitApplication,
@@ -21,7 +21,7 @@ fun main() = application {
             // For now, the input system responds only to KeyUp events -- I will expand the input system soon.
             if (keyEvent.type == KeyEventType.KeyUp && !game.inputLocked)
                 game.handleInput(keyEvent)
-            false
+            true
         }
     ) {
         MaterialTheme {

@@ -4,17 +4,30 @@ import inputoutput.BrightPurple
 import inputoutput.CautionYellow
 import inputoutput.GoGreen
 
+enum class AbilityComponentRequirement {
+    VERBAL, MANIPULAR
+}
+
 /**
  * An "ability" can be a spell, the properties of a potion, a neat physical ability or anything else which can
  * be most-easily expressed in this format. The idea is to keep it flexible.
  */
 sealed class Ability(
     val name: String,
+    val componentRequirements: Set<AbilityComponentRequirement>,
     var effect: ((WizardTowerGame, Actor, Actor?) -> Unit), // format: (game, caster, target?)
-    // todo: ability levels and/or modifiers
 ) {
     override fun toString(): String {
         return name
+    }
+
+    /**
+     * Returns true if the caster is able to access all the required components for the ability.
+     */
+    fun canCast(caster: Actor): Boolean {
+        return caster
+            .componentFlags
+            .none { it.key in componentRequirements && !it.value }
     }
 
     /**
@@ -22,10 +35,16 @@ sealed class Ability(
      */
     class MagicMissile : Ability(
         name = "Magic Missile",
+        componentRequirements = setOf(AbilityComponentRequirement.VERBAL, AbilityComponentRequirement.MANIPULAR),
         effect = { game, caster, target ->
             // Spell Stats (these are tentative):
             val magicMissileBaseDamageRange = 5..10
             val magicMissileBaseAbilityPointCost = 1
+
+            /*
+                Eventually the player will have access to means of increasing their FOV or spotting creatures
+                outside it, which would allow this to fire at anything not blocked by a wall or something.
+             */
             val magicMissileBaseRange = Int.MAX_VALUE / 2
 
             // It can be used on empty Tiles but wastes a turn:
@@ -77,6 +96,7 @@ sealed class Ability(
      */
     class MinorHealSelf : Ability (
         name = "Minor Healing",
+        componentRequirements = setOf(AbilityComponentRequirement.MANIPULAR),
         effect = { game, caster, _ ->
             val healAmount = 10
             caster.changeHealth(healAmount)

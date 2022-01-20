@@ -44,6 +44,12 @@ sealed class Actor(
     // Abilities (unlike inventory, this is never null):
     var abilities: MutableList<Ability> = mutableListOf(),
 
+    // Status flags for ability components:
+    var componentFlags: MutableMap<AbilityComponentRequirement, Boolean> = AbilityComponentRequirement
+        .values()
+        .associateWith { true }
+        .toMutableMap(),
+
     // Path: The current Coordinates path the Actor is following, if any:
     var path: MutableList<Coordinates>? = null,
 
