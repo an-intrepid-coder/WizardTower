@@ -24,7 +24,8 @@ fun main() = application {
             true
         }
     ) {
-        MaterialTheme {
+        MaterialTheme { // TODO: Custom MaterialTheme, changing up some font stuff.
+                        //       Should auto-apply to the whole app from there.
             WizardTowerInterface(game)
         }
     }
