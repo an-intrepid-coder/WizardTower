@@ -1,10 +1,7 @@
 package game
 
 import androidx.compose.ui.graphics.Color
-import inputoutput.BrightPurple
-import inputoutput.CellDisplayBundle
-import inputoutput.White
-import inputoutput.randomFoggyColor
+import inputoutput.*
 
 enum class TileType {
     FLOOR,
@@ -31,8 +28,10 @@ sealed class Tile(
     private fun cellColor(): Color {
         return if (visibleToPlayer)
             displayColor
+        else if (explored)
+            MidGray
         else
-            randomFoggyColor()
+            Black
     }
 
     /**
