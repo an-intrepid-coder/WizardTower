@@ -10,8 +10,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 
 // The dimensions of the Map Display.
-const val mapDisplayWidthNormal = 20
-const val mapDisplayHeightNormal = 20
+const val mapDisplayWidthNormal = 27
+const val mapDisplayHeightNormal = 27
 
 /**
  * Takes a list of display tiles and places them on the screen. Relies on a Tilemap to export the display tiles.
