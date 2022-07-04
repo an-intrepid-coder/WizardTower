@@ -1,5 +1,6 @@
 package game
 
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -35,6 +36,9 @@ class WizardTowerGame {
     var maybeRebindingKey: GameKeyLabel? = null
 
     // Data to export to the GUI:
+    var syncIndicator: MutableState<String> = mutableStateOf("+")
+    /* ^ NOTE: The sync indicator is a way to hack the recomposition system by forcing an
+             element to change.  */
     var displayTiles by mutableStateOf(scene.exportDisplayTiles())
     var currentBackgroundColor by mutableStateOf(scene.tilemap.backgroundColor)
     var overlayMode = OverlayType.NONE
@@ -532,6 +536,18 @@ class WizardTowerGame {
                 underCameraHealth =
                     LabeledTextDataBundle("Target Health", "${maybeActor.health}/${maybeActor.maxHealth}", White)
             }
+        }
+
+        // Overlay visible actors and calculate FoV:
+        overlayActorsOnDisplayTiles()
+
+        /* The following little trick forces Jetpack Compose to recompose, because it toggles a mutable state
+           which is normally displayed under most conditions, even when the turn does not advance and no other
+           displayed information is changed during the sync.  */
+        if (syncIndicator.value == "+") {
+            syncIndicator.value = "*"
+        } else {
+            syncIndicator.value = "+"
         }
     }
 
