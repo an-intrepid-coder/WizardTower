@@ -11,7 +11,7 @@ sealed class Scene(
     val tilemap: Tilemap,
     val camera: Camera,
     var actors: MutableList<Actor>,
-    var consumables: MutableList<Consumable>,
+    var inventoryItems: MutableList<InventoryItem>,
 ) {
     /**
      * Adds the player to the game.
@@ -54,6 +54,6 @@ sealed class Scene(
         tilemap = Tilemap.DebugArena(),
         camera = Camera(Coordinates(0, 0)),
         actors = mutableListOf(),
-        consumables = mutableListOf(),
+        inventoryItems = mutableListOf(),
     )
 }
