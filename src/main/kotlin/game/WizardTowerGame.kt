@@ -42,7 +42,7 @@ class WizardTowerGame {
     var displayTiles by mutableStateOf(scene.exportDisplayTiles())
     var currentBackgroundColor by mutableStateOf(scene.tilemap.backgroundColor)
     var overlayMode = OverlayType.NONE
-    var inputMode = InputMode.NORMAL
+    var inputMode = mutableStateOf(InputMode.NORMAL)
     var displayMessages by mutableStateOf(messageLog.messages)
     var turn by mutableStateOf(0)
     var playerDisplayStats by mutableStateOf(listOf<LabeledTextDataBundle>())
@@ -94,7 +94,7 @@ class WizardTowerGame {
      * process a new turn then input is locked during this process.
      */
     fun handleInput(keyEvent: KeyEvent) {
-        when (inputMode) {
+        when (inputMode.value) {
             InputMode.NORMAL -> handleInputNormalMode(keyEvent)
             InputMode.INVENTORY -> handleInputInventoryMode(keyEvent)
             InputMode.ABILITIES -> handleInputAbilitiesMode(keyEvent)
@@ -127,40 +127,31 @@ class WizardTowerGame {
                 // Get the ability from the player:
                 val ability = player.abilities[abilitiesIndex]
 
-                // Ability components check:
-                if (!ability.canCast(player)) {
-                    player.componentFlags
-                        .filter { !it.value && it.key in ability.componentRequirements }
-                        .keys
-                        .forEach{ component ->
-                            messageLog.addMessage(
-                                Message(
-                                    turn = turn,
-                                    text = "Component Inhibited: $component.",
-                                    textColor = AlertRed,
-                                )
-                            )
-                        }
-                    inputMode = InputMode.NORMAL
-                    syncGui()
-                    return
-                }
-
                 // Get the target at the camera location, if any:
                 val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
 
                 // Apply the ability's effect:
-                ability.effect(this, player, targetOrNull)
+                ability.effect?.let {
+                    it(this, player, targetOrNull)
+                    // Print a message to the game console:
+                    messageLog.addMessage(
+                        Message(
+                            turn = turn,
+                            text = "${player.name} used ${ability.name}!",
+                            textColor = GoGreen
+                        )
+                    )
+                }
 
                 // Send the player back to the main interface afterwards:
-                inputMode = InputMode.NORMAL
+                inputMode.value = InputMode.NORMAL
 
                 // Counts as a turn:
                 inputLocked = true
             }
             else -> {
                 if (keyEvent.key == Key.Escape) {
-                    inputMode = InputMode.NORMAL
+                    inputMode.value = InputMode.NORMAL
                     syncGui()
                 }
             }
@@ -182,7 +173,7 @@ class WizardTowerGame {
                 )
             )
 
-            inputMode = InputMode.NORMAL
+            inputMode.value = InputMode.NORMAL
             maybeRebindingKey = null
             syncGui()
         }
@@ -203,24 +194,41 @@ class WizardTowerGame {
                 val player = getPlayer()
 
                 // Out-of-bounds check:
-                if (inventoryIndex >= player.inventory!!.size)
+                if (inventoryIndex >= player.inventory.size)
                     return
 
-                val item = player.inventory!![inventoryIndex]
+                val item = player.inventory[inventoryIndex]
 
                 val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
 
-                item.use(this, player, targetOrNull)
+                if (item.useEffect != null) {
+                    item.useEffect(this, player, targetOrNull)
+                    messageLog.addMessage(
+                        Message(
+                            turn = turn,
+                            text = "${player.name} used ${item.name}!",
+                            textColor = GoGreen
+                        )
+                    )
+                } else {
+                    messageLog.addMessage(
+                        Message(
+                            turn = turn,
+                            text = "This item has no evocable effect.",
+                            textColor = CautionYellow
+                        )
+                    )
+                }
 
                 // Send the player back to the main interface afterwards:
-                inputMode = InputMode.NORMAL
+                inputMode.value = InputMode.NORMAL
 
                 // Counts as a turn:
                 inputLocked = true
             }
             else -> {
                 if (keyEvent.key == Key.Escape) {
-                    inputMode = InputMode.NORMAL
+                    inputMode.value = InputMode.NORMAL
                     syncGui()
                 }
             }
@@ -233,7 +241,7 @@ class WizardTowerGame {
     private fun handleInputNormalMode(keyEvent: KeyEvent) {
         if (keyEvent.isCtrlPressed && keyEvent.key in gameKeys.rebindableKeymap.values) {
             maybeRebindingKey = gameKeys.gameKeyLabelFromBoundKeyOrNull(keyEvent.key)
-            inputMode = InputMode.BIND_KEY
+            inputMode.value = InputMode.BIND_KEY
 
             messageLog.addMessage(
                 Message(
@@ -346,15 +354,15 @@ class WizardTowerGame {
 
                     // Toggle the Inventory Mode:
                     GameKeyLabel.INVENTORY_MENU -> {
-                        inputMode = InputMode.INVENTORY
-                        inventoryLabels = player.exportAlphabetizedStrings(player.inventory!!)
+                        inputMode.value = InputMode.INVENTORY
+                        inventoryLabels = player.exportAlphabetizedStrings(player.inventory)
                         messageLog.addMessage(Message(turn, "Inventory Input Mode toggled (ESC to return).", White))
                         syncGui()
                     }
 
                     // Toggle the Abilities Mode:
                     GameKeyLabel.ABILITIES_MENU -> {
-                        inputMode = InputMode.ABILITIES
+                        inputMode.value = InputMode.ABILITIES
                         abilityLabels = player.exportAlphabetizedStrings(player.abilities)
                         messageLog.addMessage(Message(turn, "Abilities Input Mode toggled (ESC to return).", White))
                         syncGui()
@@ -509,14 +517,11 @@ class WizardTowerGame {
     /**
      * Makes sure the GUI and the Game are in-sync.
      */
-    private fun syncGui() {
+    fun syncGui() {
         val player = getPlayer() as Actor.Player
 
         // Snap the camera to anything it is coupled to:
         scene.camera.snap()
-
-        // Overlay visible actors and calculate FoV:
-        overlayActorsOnDisplayTiles()
 
         // Prepare the Bottom Console:
         displayMessages = messageLog.messages
@@ -532,9 +537,9 @@ class WizardTowerGame {
             }
             else -> {
                 underCamera =
-                    LabeledTextDataBundle("Under Camera", maybeActor.name, factionColors[maybeActor.maybeFaction]!!)
+                    LabeledTextDataBundle("Under Camera", maybeActor.name, factionColors[Faction.NEUTRAL]!!)
                 underCameraHealth =
-                    LabeledTextDataBundle("Target Health", "${maybeActor.health}/${maybeActor.maxHealth}", White)
+                    LabeledTextDataBundle("Target HP", "${maybeActor.hitPoints}/${maybeActor.maxHitPoints}", White)
             }
         }
 
@@ -569,35 +574,31 @@ class WizardTowerGame {
 
         val player = getPlayer()
 
+        // Couple the camera to the player to start the game:
         scene.camera.coupleTo(player)
 
-        // For now, I'll start the player with some simple abilities/spells for testing:
-        player.addAbility(Ability.MinorHealSelf())
-        player.addAbility(Ability.MagicMissile())
+        // Give the player some starting abilities:
+        player.addAbility(Ability.AllOutDefense())
 
-        // Give the player 5 potions to play with.
-        val numStartingPotions = 5
-        repeat (numStartingPotions) {
-            player.addConsumable(
-                Consumable(
-                    name = "Minor Healing Potion",
-                    ability = Ability.MinorHealSelf(),
-                    charges = 1,
-                    maxCharges = 1,
-                    containedWithin = player.inventory!!
-                )
+        // Give the player some starting items:
+        player.addInventoryItem(
+            InventoryItem(
+                "Padded Armor",
+                1,
+                true,
+                null,
             )
-        }
+        )
 
-        // Place a Barg close to the player for testing:
-        val bargSpawn = scene.tilemap
+        // Place a testing enemy next to the player:
+        val targetSpawn = scene.tilemap
             .tilesInRadius(player.coordinates, 5)
             .filter { it.isPassable }
             .random()
             .coordinates
 
         scene.addActor(
-            Actor.Barg(bargSpawn)
+            Actor.Target(targetSpawn)
         )
 
         syncGui()
