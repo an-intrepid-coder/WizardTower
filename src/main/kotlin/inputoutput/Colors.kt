@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import game.Faction
 
 val DarkGray = Color(30, 30, 30)
+val MidGray = Color(110, 110, 110)
 val White = Color(255, 255,255)
 val Black = Color(0, 0, 0)
 val GoGreen = Color(0, 255, 0)
@@ -25,11 +26,3 @@ val factionColors = mapOf(
     Faction.HOSTILE to HostileColor,
     null to NoFactionColor,
 )
-/**
- * Returns a random color within a mid-low range. One neat side effect of this is that, while waiting consecutive
- * turns, the surrounding fog of war appears to "shimmer".
- */
-fun randomFoggyColor(): Color {
-    val fogRange = 80..120
-    return Color(fogRange.random(), fogRange.random(), fogRange.random())
-}
