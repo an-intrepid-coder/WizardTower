@@ -88,6 +88,8 @@ sealed class AStarPath(
             val fScore = mutableMapOf<Coordinates, Int>()
 
             val openSet = PriorityQueue { a: Coordinates, b: Coordinates ->
+                // TODO: This is where some kind of Diagonal cost needs to be implemented.
+                //       For now, the geometry is simply equivalent in all directions.
                 val fScoreA = fScore.getOrElse(a) { scoreDefault }
                 val fScoreB = fScore.getOrElse(b) { scoreDefault }
 
@@ -142,7 +144,7 @@ sealed class AStarPath(
     }
 
     /**
-     * Direct is for when there are no waypoints and it is just point A to point B.
+     * Direct is for when there are no waypoints, and it is just point A to point B.
      */
     class Direct(
         start: Coordinates,
