@@ -2,6 +2,7 @@ package game
 
 import androidx.compose.ui.graphics.Color
 import inputoutput.*
+import kotlin.math.floor
 
 // These are both limitations of the way I am handling input at the moment, and I may change that in the future.
 const val MAX_INVENTORY_SIZE = 26
@@ -21,34 +22,22 @@ sealed class Actor(
     val displayValue: String,
     val displayColor: Color,
 
-    // Health (even "items" have it):
+    var strength: Int,
+    var dexterity: Int,
+    var intelligence: Int,
     var health: Int,
-    var maxHealth: Int,
-
-    // Ability Points (for spells and abilities):
-    var abilityPoints: Int,
-    var maxAbilityPoints: Int,
-
-    // Faction, if any:
-    var maybeFaction: Faction? = null,
 
     // Special boolean for the player:
     val isPlayer: Boolean = false,
 
-    // Amount of gold:
-    var gold: Int = 0,
+    // Amount of wealth (gold, etc.):
+    var wealth: Int = 0,
 
     // Inventory, if any:
-    var inventory: MutableList<Consumable>? = null,
+    var inventory: MutableList<InventoryItem> = mutableListOf(),
 
     // Abilities (unlike inventory, this is never null):
     var abilities: MutableList<Ability> = mutableListOf(),
-
-    // Status flags for ability components:
-    var componentFlags: MutableMap<AbilityComponentRequirement, Boolean> = AbilityComponentRequirement
-        .values()
-        .associateWith { true }
-        .toMutableMap(),
 
     // Path: The current Coordinates path the Actor is following, if any:
     var path: MutableList<Coordinates>? = null,
@@ -56,8 +45,70 @@ sealed class Actor(
     // Behavior, if any:
     var behavior: ((WizardTowerGame, Actor) -> Unit)? = null, // format: (Game, Self)
 ) {
+    var hitPoints: Int = strength
+    var maxHitPoints: Int = strength
+
+    // If the actor is using all-out-defense:
+    var allOutDefense: Boolean = false // TODO: Implement in combat system
+
+    fun changeHitPoints(amount: Int) {
+        hitPoints += amount
+            .coerceAtLeast(0)
+            .coerceAtMost(maxHitPoints)
+    }
+
+    var fatiguePoints = health
+    var maxFatiguePoints = health
+
+    fun changeFatiguePoints(amount: Int) {
+        fatiguePoints += amount
+            .coerceAtLeast(0)
+            .coerceAtMost(maxFatiguePoints)
+    }
+
+    fun getWill(): Int {
+        return intelligence
+    }
+
+    fun getPerception(): Int {
+        return intelligence
+    }
+
+    fun getBasicLift(): Double {
+        val raw = (strength * strength).toDouble() / 5
+        return if (raw > 10) {
+            kotlin.math.round(raw)
+        } else {
+            raw
+        }
+    }
+
+    fun getBasicSpeed(): Double {
+        return (health + dexterity).toDouble() / 4
+    }
+
+    fun getBasicMove(): Int {
+        return floor(getBasicSpeed()).toInt()
+    }
+
+    fun getDodge(): Int {
+        // TODO: Encumbrance
+        return floor(getBasicSpeed()).toInt() + 3
+    }
+
+    fun getBlock(): Int {
+        // TODO: Inventory system. This requires a shield item.
+        return 3 // placeholder
+    }
+
+    fun getParry(): Int {
+        // TODO: Inventory system. This requires a weapon.
+        // TODO: Unarmed version
+        return 3 // placeholder
+    }
+
     /**
-     * Adds an ability to the Actor's inventory, if possible.
+     * Adds an ability to the Actor's abilities list, if possible.
      */
     fun addAbility(ability: Ability) {
         if (abilities.size < MAX_ABILITIES)
@@ -67,9 +118,9 @@ sealed class Actor(
     /**
      * Adds an item to the Actor's inventory, if possible.
      */
-    fun addConsumable(item: Consumable) {
-        if (hasInventory() && inventory!!.size < MAX_INVENTORY_SIZE)
-            inventory!!.add(item)
+    fun addInventoryItem(item: InventoryItem) {
+        if (inventory.size < MAX_INVENTORY_SIZE)
+            inventory.add(item)
     }
 
     /**
@@ -86,33 +137,9 @@ sealed class Actor(
     }
 
     /**
-     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
+     * Changes the Actor's wealth.
      */
-    fun changeAbilityPoints(amount: Int) {
-        abilityPoints = abilityPoints
-            .plus(amount)
-            .coerceAtMost(maxAbilityPoints)
-            .coerceAtLeast(0)
-    }
-
-    /**
-     * Changes the Actor's gold. Does not allow gold to go below 0.
-     */
-    fun changeGold(amount: Int) {
-        gold = gold
-            .plus(amount)
-            .coerceAtLeast(0)
-    }
-
-    /**
-     * Changes the Actor's health. Does not allow it to go below 0 or over maxHealth.
-     */
-    fun changeHealth(amount: Int) {
-        health = health
-            .plus(amount)
-            .coerceAtMost(maxHealth)
-            .coerceAtLeast(0)
-    }
+    fun changeWealth(amount: Int) { wealth = wealth.plus(amount) }
 
     /**
      * Describes the Actor with a list of Messages.
@@ -124,13 +151,6 @@ sealed class Actor(
     }
 
     /**
-     * Returns true if the Actor has an inventory.
-     */
-    fun hasInventory(): Boolean {
-        return inventory != null
-    }
-
-    /**
      * Returns true if the Actor has greater than 0 health.
      */
     fun isAlive(): Boolean {
@@ -139,9 +159,10 @@ sealed class Actor(
 
     /**
      * Sets the Actor's health to 0.
+     * // TODO: Implement GURPS negative HP rules.
      */
     fun kill() {
-        health = 0
+        hitPoints = 0
     }
 
     /**
@@ -149,6 +170,7 @@ sealed class Actor(
      * the movement was successful, and false otherwise.
      *
      * todo: A more complex time/initiative system.
+     * todo: Additional cost for diagonal movement.
      */
     fun move(
         direction: Direction,
@@ -170,27 +192,15 @@ sealed class Actor(
                 if (direction == Direction.Stationary() || (tile.isPassable && maybeActor == null)) {
                     coordinates = target
                     moved = true
-                } else if (maybeActor != null && wouldFight(maybeActor)) {
-                    val dmg = 1 // for now
-                    maybeActor.changeHealth(-dmg)
+                } else {
                     game.messageLog.addMessage(
                         Message(
                             turn = game.turn,
-                            text = "$name struck ${maybeActor.name} for $dmg damage.",
+                            text = "$name can't move there!",
                             textColor = CautionYellow,
                         )
                     )
-                    if (!maybeActor.isAlive())
-                        game.messageLog.addMessage(
-                            Message(
-                                turn = game.turn,
-                                text = "${maybeActor.name} dies!",
-                                textColor = CautionYellow,
-                            )
-                        )
-
-                    // Counts as movement for the sake of turn processing
-                    moved = true
+                    game.syncGui()
                 }
             }
         return moved
@@ -221,7 +231,7 @@ sealed class Actor(
     }
 
     /**
-     * Removes an item from the Actor's inventory, if possible.
+     * Removes an ability from the Actor's abilities, if possible.
      */
     fun removeAbility(ability: Ability) {
         abilities.remove(ability)
@@ -230,9 +240,9 @@ sealed class Actor(
     /**
      * Removes an item from the Actor's inventory, if possible.
      */
-    fun removeConsumable(item: Consumable) {
-        if (hasInventory() && inventory!!.contains(item))
-            inventory!!.remove(item)
+    fun removeConsumable(item: InventoryItem) {
+        if (inventory.contains(item))
+            inventory.remove(item)
     }
 
     /**
@@ -243,7 +253,8 @@ sealed class Actor(
         decoupledCamera: Coordinates? = null,
     ): CellDisplayBundle {
         return if (overlayMode == OverlayType.FACTION)
-            CellDisplayBundle(displayValue, factionColors[maybeFaction]!!, coordinates)
+            // TODO: Rework factions to be relative reaction modifiers or something
+            CellDisplayBundle(displayValue, factionColors[Faction.NEUTRAL]!!, coordinates)
         else if (decoupledCamera != null && decoupledCamera == coordinates)
             CellDisplayBundle(displayValue, BrightPurple, coordinates)
         else
@@ -251,30 +262,20 @@ sealed class Actor(
     }
 
     /**
-     * Compares two actors to determine if movement-collisions result in combat.
-     *
-     * Note: Eventually I will have a more fine-grained faction system than just Player/Neutral/Hostile.
-     */
-    private fun wouldFight(actor: Actor): Boolean {
-        return (maybeFaction == Faction.PLAYER && actor.maybeFaction == Faction.HOSTILE)
-                || (maybeFaction == Faction.HOSTILE && actor.maybeFaction == Faction.PLAYER)
-    }
-
-    /**
      * Large, scaled quadrupeds with nasty dispositions.
      */
-    class Barg(
+    class Barg( // TODO: Revise this enemy for the new stats system
         coordinates: Coordinates,
     ) : Actor(
         name = "Barg",
         coordinates = coordinates,
         displayValue = "B",
         displayColor = White,
-        maybeFaction = Faction.HOSTILE,
+        // Placeholder stats:
+        strength = 10,
+        dexterity = 10,
+        intelligence = 10,
         health = 10,
-        maxHealth = 10,
-        abilityPoints = 0,
-        maxAbilityPoints = 0,
         path = mutableListOf(),
         behavior = { game, self ->
             /*
@@ -318,13 +319,12 @@ sealed class Actor(
         displayValue = "@",
         displayColor = White,
         isPlayer = true,
-        maybeFaction = Faction.PLAYER,
 
         // Stats are wholly arbitrary for now. Will balance down the road:
+        strength = 10,
+        dexterity = 10,
+        intelligence = 10,
         health = 10,
-        maxHealth = 10,
-        abilityPoints = 30,
-        maxAbilityPoints = 30,
 
         inventory = mutableListOf(),
     ) {
@@ -345,9 +345,22 @@ sealed class Actor(
          */
         fun exportStatsToCompose(): List<LabeledTextDataBundle> {
             return listOf(
-                LabeledTextDataBundle("Gold", gold.toString(), White),
-                LabeledTextDataBundle("Health", "$health/$maxHealth", White),
-                LabeledTextDataBundle("Ability Points", "$abilityPoints/$maxAbilityPoints", White)
+                LabeledTextDataBundle("Gold", wealth.toString(), White),
+                LabeledTextDataBundle("HP", "$hitPoints/$maxHitPoints", White),
+                LabeledTextDataBundle("DR", "?TODO)", White),
+                LabeledTextDataBundle("ST", "$strength", White),
+                LabeledTextDataBundle("DX", "$dexterity", White),
+                LabeledTextDataBundle("IQ", "$intelligence", White),
+                LabeledTextDataBundle("HT", "$health", White),
+                LabeledTextDataBundle("FP", "$fatiguePoints/$maxFatiguePoints", White),
+                LabeledTextDataBundle("Will", "${getWill()}", White),
+                LabeledTextDataBundle("Perception", "${getPerception()}", White),
+                LabeledTextDataBundle("Basic Lift", "${getBasicLift()}", White),
+                LabeledTextDataBundle("Basic Speed", "${getBasicSpeed()}", White),
+                LabeledTextDataBundle("Basic Move", "${getBasicMove()}", White),
+                LabeledTextDataBundle("Dodge", "${getDodge()}", White),
+                LabeledTextDataBundle("Block", "(TODO)", White),
+                LabeledTextDataBundle("Parry", "(TODO)", White),
             )
         }
     }
@@ -362,11 +375,10 @@ sealed class Actor(
         coordinates = coordinates,
         displayValue = "p",
         displayColor = White,
-        maybeFaction = Faction.HOSTILE,
+        strength = 10,
+        dexterity = 10,
+        intelligence = 10,
         health = 10,
-        maxHealth = 10,
-        abilityPoints = 0,
-        maxAbilityPoints = 0,
         behavior = { game, self ->
             val fluffChanceOutOf100 = 1
             if (game.getPlayer().canSee(self.coordinates, game) && withChance(100, fluffChanceOutOf100))
