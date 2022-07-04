@@ -29,33 +29,41 @@ fun WizardTowerInterface(
             Spacer(Modifier.width(displaySpacing))
             MapDisplay(game.displayTiles, game.currentBackgroundColor)
             Spacer(Modifier.width(displaySpacing))
-            when (game.inputMode) {
+            when (game.inputMode.value) {
                 InputMode.NORMAL -> {
                     SideHud(
                         game.playerDisplayStats
-                            .plus(
-                                listOf(
-                                    LabeledTextDataBundle("Turn", game.turn.toString(), White),
-                                    LabeledTextDataBundle("Camera", game.scene.camera.coordinates.toString(), White),
-                                    game.underCamera,
-                                    game.underCameraHealth,
-                                )
-                            )
+                    )
+                    Spacer(Modifier.width(displaySpacing))
+                    SideHud(
+                        listOf(
+                            LabeledTextDataBundle("Input Mode", game.inputMode.value.toString(), White),
+                            LabeledTextDataBundle("Sync Indicator", game.syncIndicator.value, White),
+                            LabeledTextDataBundle("Turn", game.turn.toString(), White),
+                            LabeledTextDataBundle("Camera", game.scene.camera.coordinates.toString(), White),
+                            game.underCamera,
+                            game.underCameraHealth,
+                        )
                     )
                 }
                 InputMode.INVENTORY -> {
                     SideHud(
-                        game.inventoryLabels
+                        listOf(LabeledTextDataBundle("Input Mode", game.inputMode.value.toString(), White)).plus(
+                            game.inventoryLabels
+                        )
                     )
                 }
                 InputMode.ABILITIES -> {
                     SideHud(
-                        game.abilityLabels
+                        listOf(LabeledTextDataBundle("Input Mode", game.inputMode.value.toString(), White)).plus(
+                            game.abilityLabels
+                        )
                     )
                 }
                 InputMode.BIND_KEY -> {
                     SideHud(
                         listOf(
+                            LabeledTextDataBundle("Input Mode", game.inputMode.value.toString(), White),
                             LabeledTextDataBundle(
                                 label = "Binding",
                                 value = game.maybeRebindingKey.toString(),
