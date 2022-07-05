@@ -380,8 +380,7 @@ sealed class Actor(
         intelligence = 10,
         health = 10,
         behavior = { game, self ->
-            val fluffChanceOutOf100 = 1
-            if (game.getPlayer().canSee(self.coordinates, game) && withChance(100, fluffChanceOutOf100))
+            if (game.getPlayer().canSee(self.coordinates, game) && rollD6().sum() == 18)
                 game.messageLog.addMessage(
                     Message(
                         turn = game.turn,
