@@ -1,6 +1,13 @@
 # TODO list
 
-* Rudimentary skill system.
-* Rudimentary (dis)advantage/perk/quirk/trait system.
-* Rudimentary equipment system (needed for combat stats)
-* Rudimentary combat system.
+* Scrollable Side HUDs
+* Skills menu
+* Extended Character Sheet screen
+
+* Inventory system based on weight of items 
+* Item Stacking 
+
+* Advantages and Disadvantages
+* Quirks and Perks
+
+* Combat System (many subcomponents to enumerate here)
