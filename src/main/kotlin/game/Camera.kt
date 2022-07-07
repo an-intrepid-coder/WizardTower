@@ -6,13 +6,13 @@ package game
  */
 class Camera(
     var coordinates: Coordinates,
-    var coupledToOrNull: Actor? = null,
+    var coupledToOrNull: Character? = null,
 ) {
     /**
      * Couples the Camera to the given actor until decoupled.
      */
-    fun coupleTo(actor: Actor) {
-        coupledToOrNull = actor
+    fun coupleTo(character: Character) {
+        coupledToOrNull = character
     }
 
     /**

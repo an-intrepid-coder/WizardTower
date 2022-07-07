@@ -54,15 +54,15 @@ class WizardTowerGame {
     /**
      * Returns the Actor at the given Coordinates or null.
      */
-    private fun actorAtCoordinatesOrNull(coordinates: Coordinates): Actor? {
-        return scene.actors.firstOrNull { it.coordinates == coordinates }
+    private fun actorAtCoordinatesOrNull(coordinates: Coordinates): Character? {
+        return scene.characters.firstOrNull { it.coordinates == coordinates }
     }
 
     /**
      * Runs the behavior function for each Actor in the game which has one.
      */
     private fun behaviorCheck() {
-        scene.actors
+        scene.characters
             .asSequence()
             .filter { it.behavior != null }
             .forEach { actor ->
@@ -82,9 +82,9 @@ class WizardTowerGame {
     /**
      * Returns the player from the actor pool.
      */
-    fun getPlayer(): Actor {
+    fun getPlayer(): Character {
         return scene
-            .actors
+            .characters
             .firstOrNull{ it.isPlayer }
             ?: error("Player not found.")
     }
@@ -202,7 +202,7 @@ class WizardTowerGame {
                 val targetOrNull = actorAtCoordinatesOrNull(scene.camera.coordinates)
 
                 if (item.useEffect != null) {
-                    item.useEffect(this, player, targetOrNull)
+                    item.useEffect!!(this, player, targetOrNull)
                     messageLog.addMessage(
                         Message(
                             turn = turn,
@@ -255,7 +255,7 @@ class WizardTowerGame {
         }
 
         var moved = false
-        val player = getPlayer() as Actor.Player
+        val player = getPlayer() as Character.Player
         val directionOrNull = gameKeys.directionFromKeyOrNull(keyEvent.key)
         when (directionOrNull != null) {
             true -> {
@@ -302,7 +302,7 @@ class WizardTowerGame {
 
                         // All actors in sight, ordered by distance from the player:
                         val actorsInSight = scene
-                            .actors
+                            .characters
                             .asSequence()
                             .filter { player.canSee(it.coordinates, this) }
                             .sortedBy { player.coordinates.chebyshevDistance(it.coordinates) }
@@ -424,7 +424,7 @@ class WizardTowerGame {
 
                             // Else if player can see tile:
                             else if (tile.visibleToPlayer)
-                                scene.actors
+                                scene.characters
                                     .firstOrNull { it.coordinates == cell.coordinates }
                                     .let { maybeActor ->
                                         maybeActor
@@ -518,7 +518,7 @@ class WizardTowerGame {
      * Makes sure the GUI and the Game are in-sync.
      */
     fun syncGui() {
-        val player = getPlayer() as Actor.Player
+        val player = getPlayer() as Character.Player
 
         // Snap the camera to anything it is coupled to:
         scene.camera.snap()
@@ -546,9 +546,9 @@ class WizardTowerGame {
         // Overlay visible actors and calculate FoV:
         overlayActorsOnDisplayTiles()
 
-        /* The following little trick forces Jetpack Compose to recompose, because it toggles a mutable state
-           which is normally displayed under most conditions, even when the turn does not advance and no other
-           displayed information is changed during the sync.  */
+        /* NOTE: The following little trick forces Jetpack Compose to recompose, because it toggles a mutable state
+                 which is normally displayed under most conditions, even when the turn does not advance and no other
+                 displayed information is changed during the sync.  */
         if (syncIndicator.value == "+") {
             syncIndicator.value = "*"
         } else {
@@ -564,7 +564,7 @@ class WizardTowerGame {
             For now, starting off with just a player in a test arena to work on mechanics and systems.
          */
         scene.addActor(
-            Actor.Player(
+            Character.Player(
                 coordinates = scene
                     .tilemap
                     .randomTileOfType(TileType.FLOOR)
@@ -579,16 +579,15 @@ class WizardTowerGame {
 
         // Give the player some starting abilities:
         player.addAbility(Ability.AllOutDefense())
+        player.addAbility(Ability.Block())
+        player.addAbility(Ability.Parry())
+
+        // Give the player some starting skills:
+        player.addSkill(Skill.Shield())
 
         // Give the player some starting items:
-        player.addInventoryItem(
-            InventoryItem(
-                "Padded Armor",
-                1,
-                true,
-                null,
-            )
-        )
+        player.addInventoryItem(InventoryItem.PaddedArmor())
+        player.addInventoryItem(InventoryItem.SmallShield())
 
         // Place a testing enemy next to the player:
         val targetSpawn = scene.tilemap
@@ -598,7 +597,7 @@ class WizardTowerGame {
             .coordinates
 
         scene.addActor(
-            Actor.Target(targetSpawn)
+            Character.Target(targetSpawn)
         )
 
         syncGui()

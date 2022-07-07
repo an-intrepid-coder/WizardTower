@@ -14,7 +14,7 @@ const val scoreDefault = Int.MAX_VALUE / 2
 sealed class AStarPath(
     waypoints: List<Coordinates>,
     game: WizardTowerGame,
-    actor: Actor? = null,
+    character: Character? = null,
     /*
         Heuristic Function should take the form of (Node, Goal, Game). The default only looks for
         the shortest passable distance.
@@ -25,7 +25,7 @@ sealed class AStarPath(
 
         val actorOnNode = game
             .scene
-            .actors
+            .characters
             .any{ it.coordinates == node && node != goal && node != waypoints.first() }
 
         if (maybeTile == null)
@@ -150,11 +150,11 @@ sealed class AStarPath(
         start: Coordinates,
         goal: Coordinates,
         game: WizardTowerGame,
-        actor: Actor?,
+        character: Character?,
     ) : AStarPath(
         waypoints = listOf(start, goal),
         game = game,
-        actor = actor,
+        character = character,
     )
 
     /**
@@ -163,10 +163,10 @@ sealed class AStarPath(
     class DirectSequence(
         waypoints: List<Coordinates>,
         game: WizardTowerGame,
-        actor: Actor?,
+        character: Character?,
     ) : AStarPath(
         waypoints = waypoints,
         game = game,
-        actor = actor,
+        character = character,
     )
 }

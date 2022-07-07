@@ -10,14 +10,14 @@ import inputoutput.mapDisplayWidthNormal
 sealed class Scene(
     val tilemap: Tilemap,
     val camera: Camera,
-    var actors: MutableList<Actor>,
+    var characters: MutableList<Character>,
     var inventoryItems: MutableList<InventoryItem>,
 ) {
     /**
      * Adds the player to the game.
      */
-    fun addActor(actor: Actor) {
-        actors.add(actor)
+    fun addActor(character: Character) {
+        characters.add(character)
     }
 
     /**
@@ -45,7 +45,7 @@ sealed class Scene(
      * Removes all dead actors and items from the game.
      */
     fun removeDeadActors() {
-        actors = actors
+        characters = characters
             .filter { it.isAlive() }
             .toMutableList()
     }
@@ -53,7 +53,7 @@ sealed class Scene(
     class DebugArena : Scene(
         tilemap = Tilemap.DebugArena(),
         camera = Camera(Coordinates(0, 0)),
-        actors = mutableListOf(),
+        characters = mutableListOf(),
         inventoryItems = mutableListOf(),
     )
 }

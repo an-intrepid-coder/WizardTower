@@ -42,7 +42,7 @@ sealed class Tilemap(
     /**
      * Calculates the Field of View of the player. For now, it does not take the FOV of other Actors in to account.
      */
-    fun calculateFieldOfView(player: Actor, game: WizardTowerGame) {
+    fun calculateFieldOfView(player: Character, game: WizardTowerGame) {
         // Set all tiles to explored if they were visible:
         tiles.forEach { row ->
             row.forEach { tile ->

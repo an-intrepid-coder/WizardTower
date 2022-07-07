@@ -11,7 +11,7 @@ const val MAX_ABILITIES = 26
 /**
  * The Actor sealed class. Actors in the game will be instances of subclasses of Actor.
  */
-sealed class Actor(
+sealed class Character(
     // Name:
     val name: String,
 
@@ -39,17 +39,38 @@ sealed class Actor(
     // Abilities (unlike inventory, this is never null):
     var abilities: MutableList<Ability> = mutableListOf(),
 
+    // Skills which may or may not map to active abilities:
+    var skills: MutableList<Skill> = mutableListOf(),
+
     // Path: The current Coordinates path the Actor is following, if any:
     var path: MutableList<Coordinates>? = null,
 
     // Behavior, if any:
-    var behavior: ((WizardTowerGame, Actor) -> Unit)? = null, // format: (Game, Self)
+    var behavior: ((WizardTowerGame, Character) -> Unit)? = null, // format: (Game, Self)
 ) {
     var hitPoints: Int = strength
     var maxHitPoints: Int = strength
 
     // If the actor is using all-out-defense:
     var allOutDefense: Boolean = false // TODO: Implement in combat system
+    var parrying: Character? = null // TODO: Implement in combat system
+    var blocking: Character? = null // TODO: Implement in combat system
+
+    fun getBlocking(): String {
+        return if (blocking == null) {
+            "None"
+        } else {
+            blocking!!.name
+        }
+    }
+
+    fun getParrying(): String {
+        return if (parrying == null) {
+            "None"
+        } else {
+            parrying!!.name
+        }
+    }
 
     fun changeHitPoints(amount: Int) {
         hitPoints += amount
@@ -91,20 +112,32 @@ sealed class Actor(
         return floor(getBasicSpeed()).toInt()
     }
 
+    fun getDamageResistance(): Int {
+        return inventory.sumOf { it.damageResistance }
+    }
+
+    fun getSkillOrNull(skillName: String): Skill? {
+        return skills.find { it.name == skillName }
+    }
+
     fun getDodge(): Int {
-        // TODO: Encumbrance
+        // TODO: Encumbrance to fully implement modifiers
         return floor(getBasicSpeed()).toInt() + 3
     }
 
     fun getBlock(): Int {
-        // TODO: Inventory system. This requires a shield item.
-        return 3 // placeholder
+        val shieldSkill = getSkillOrNull("Shield")
+        return if (shieldSkill == null) {
+            // TODO: ^ Default skills
+            3
+        } else {
+            3 + floor(shieldSkill.level / 2.0).toInt()
+        }
     }
 
     fun getParry(): Int {
-        // TODO: Inventory system. This requires a weapon.
         // TODO: Unarmed version
-        return 3 // placeholder
+        return 3 // TODO: Implement
     }
 
     /**
@@ -113,6 +146,13 @@ sealed class Actor(
     fun addAbility(ability: Ability) {
         if (abilities.size < MAX_ABILITIES)
             abilities.add(ability)
+    }
+
+    /**
+     * Adds a Skill to the Character's skills list.
+     */
+    fun addSkill(skill: Skill) {
+        skills.add(skill)
     }
 
     /**
@@ -186,7 +226,7 @@ sealed class Actor(
             ?.let { tile ->
                 val maybeActor = game
                     .scene
-                    .actors
+                    .characters
                     .firstOrNull { it.coordinates == tile.coordinates }
 
                 if (direction == Direction.Stationary() || (tile.isPassable && maybeActor == null)) {
@@ -266,7 +306,7 @@ sealed class Actor(
      */
     class Barg( // TODO: Revise this enemy for the new stats system
         coordinates: Coordinates,
-    ) : Actor(
+    ) : Character(
         name = "Barg",
         coordinates = coordinates,
         displayValue = "B",
@@ -292,7 +332,7 @@ sealed class Actor(
                         start = self.coordinates,
                         goal = player.coordinates,
                         game = game,
-                        actor = self,
+                        character = self,
                     ).path?.toMutableList() ?: error("A* Path null result.")
                     self.path!!.removeFirst()
 
@@ -313,7 +353,7 @@ sealed class Actor(
      */
     class Player(
         coordinates: Coordinates,
-    ) : Actor(
+    ) : Character(
         name = "Player",
         coordinates = coordinates,
         displayValue = "@",
@@ -347,7 +387,7 @@ sealed class Actor(
             return listOf(
                 LabeledTextDataBundle("Gold", wealth.toString(), White),
                 LabeledTextDataBundle("HP", "$hitPoints/$maxHitPoints", White),
-                LabeledTextDataBundle("DR", "?TODO)", White),
+                LabeledTextDataBundle("DR", "${getDamageResistance()}", White),
                 LabeledTextDataBundle("ST", "$strength", White),
                 LabeledTextDataBundle("DX", "$dexterity", White),
                 LabeledTextDataBundle("IQ", "$intelligence", White),
@@ -359,8 +399,8 @@ sealed class Actor(
                 LabeledTextDataBundle("Basic Speed", "${getBasicSpeed()}", White),
                 LabeledTextDataBundle("Basic Move", "${getBasicMove()}", White),
                 LabeledTextDataBundle("Dodge", "${getDodge()}", White),
-                LabeledTextDataBundle("Block", "(TODO)", White),
-                LabeledTextDataBundle("Parry", "(TODO)", White),
+                LabeledTextDataBundle("Block", "${getBlock()}", White),
+                LabeledTextDataBundle("Parry", "${getParry()}", White),
             )
         }
     }
@@ -370,7 +410,7 @@ sealed class Actor(
      */
     class Target(
         coordinates: Coordinates
-    ) : Actor(
+    ) : Character(
         name = "Practice Target",
         coordinates = coordinates,
         displayValue = "p",
