@@ -43,6 +43,8 @@ fun WizardTowerInterface(
                             LabeledTextDataBundle("Camera", game.scene.camera.coordinates.toString(), White),
                             game.underCamera,
                             game.underCameraHealth,
+                            LabeledTextDataBundle("Blocking", game.getPlayer().getBlocking(), White),
+                            LabeledTextDataBundle("Parrying", game.getPlayer().getParrying(), White),
                         )
                     )
                 }
