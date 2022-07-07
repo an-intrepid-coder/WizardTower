@@ -6,7 +6,7 @@ package game
  */
 sealed class Ability(
     val name: String,
-    var effect: ((WizardTowerGame, Actor, Actor?) -> Unit)?, // format: (game, caster, target?)?
+    var effect: ((WizardTowerGame, Character, Character?) -> Unit)?, // format: (game, caster, target?)?
 ) {
     override fun toString(): String {
         return name
@@ -15,7 +15,22 @@ sealed class Ability(
     class AllOutDefense : Ability(
         name = "All-Out Defense",
         effect = { game, caster, _ ->
-            caster.allOutDefense = true // NOTE: Not implemented yet
+            caster.allOutDefense = true // TODO: Implement combat system
         }
     )
+
+    class Parry : Ability(
+        name = "Parry",
+        effect = { game, caster, target ->
+            caster.parrying = target // TODO: Implement combat system
+        }
+    )
+
+    class Block : Ability(
+        name = "Block",
+        effect = { game, caster, target ->
+            caster.blocking = target // TODO: Implement combat system
+        }
+    )
+    // TODO: Synchronize the above 3 in the combat system, once implemented.
 }
