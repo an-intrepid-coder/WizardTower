@@ -3,8 +3,10 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.6.10"
-    id("org.jetbrains.compose") version "1.0.1"
+    // Note: When updating these versions, *always* look at the exact nomenclature listed on
+    //       the official websites. It is the only reliable way to do it.
+    kotlin("jvm") version "1.7.0"
+    id("org.jetbrains.compose") version "1.2.0-alpha01-dev741"
 }
 
 group = "me.sgibber2018"
