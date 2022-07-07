@@ -6,7 +6,7 @@ package game
  */
 fun rollDice(numSides: Int, numDice: Int): List<Int> {
     var result: List<Int> = listOf()
-    for (i in (0..numDice)) {
+    for (i in (1..numDice)) {
         result = result.plus((0..numSides).random())
     }
     return result
