@@ -140,6 +140,110 @@ sealed class Character(
         return 3 // TODO: Implement
     }
 
+    fun getThrustDice(): Int {
+        return when (strength) {
+            1 -> 1
+            2 -> 1
+            3 -> 1
+            4 -> 1
+            5 -> 1
+            6 -> 1
+            7 -> 1
+            8 -> 1
+            9 -> 1
+            10 -> 1
+            11 -> 1
+            12 -> 1
+            13 -> 1
+            14 -> 1
+            15 -> 1
+            16 -> 1
+            17 -> 1
+            18 -> 1
+            19 -> 2
+            20 -> 2
+            else -> error("Invalid value: $strength")
+        }
+    }
+
+    fun getThrustMod(): Int {
+        return when (strength) {
+            1 -> -6
+            2 -> -6
+            3 -> -5
+            4 -> -5
+            5 -> -4
+            6 -> -4
+            7 -> -3
+            8 -> -3
+            9 -> -2
+            10 -> -2
+            11 -> -1
+            12 -> -1
+            13 -> 0
+            14 -> 0
+            15 -> 1
+            16 -> 1
+            17 -> 2
+            18 -> 2
+            19 -> -1
+            20 -> -1
+            else -> error("Invalid value: $strength")
+        }
+    }
+
+    fun getSwingDice(): Int {
+        return when (strength) {
+            1 -> 1
+            2 -> 1
+            3 -> 1
+            4 -> 1
+            5 -> 1
+            6 -> 1
+            7 -> 1
+            8 -> 1
+            9 -> 1
+            10 -> 1
+            11 -> 1
+            12 -> 1
+            13 -> 2
+            14 -> 2
+            15 -> 2
+            16 -> 2
+            17 -> 3
+            18 -> 3
+            19 -> 3
+            20 -> 3
+            else -> error("Invalid value: $strength")
+        }
+    }
+
+    fun getSwingMod(): Int {
+        return when (strength) {
+            1 -> -5
+            2 -> -5
+            3 -> -4
+            4 -> -4
+            5 -> -3
+            6 -> -3
+            7 -> -2
+            8 -> -2
+            9 -> -1
+            10 -> 0
+            11 -> 1
+            12 -> 2
+            13 -> -1
+            14 -> 0
+            15 -> 1
+            16 -> 1
+            17 -> -1
+            18 -> 0
+            19 -> 1
+            20 -> 2
+            else -> error("Invalid value: $strength")
+        }
+    }
+
     /**
      * Adds an ability to the Actor's abilities list, if possible.
      */
@@ -401,6 +505,16 @@ sealed class Character(
                 LabeledTextDataBundle("Dodge", "${getDodge()}", White),
                 LabeledTextDataBundle("Block", "${getBlock()}", White),
                 LabeledTextDataBundle("Parry", "${getParry()}", White),
+                // TODO: Damage modifiers from weapons for Thrust/Swing:
+                LabeledTextDataBundle("Thrust", "${getThrustDice()}d${getThrustMod().let{ 
+                    if (it < 0) it 
+                    else "+$it"
+                }}", White),
+                LabeledTextDataBundle("Swing", "${getSwingDice()}d${getSwingMod().let{
+                    if (it < 0) it
+                    else "+$it"
+                }}", White),
+                // TODO: Ranged damage
             )
         }
     }
