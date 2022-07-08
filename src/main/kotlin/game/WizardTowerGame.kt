@@ -581,6 +581,8 @@ class WizardTowerGame {
         player.addAbility(Ability.AllOutDefense())
         player.addAbility(Ability.Block())
         player.addAbility(Ability.Parry())
+        player.addAbility(Ability.Thrust())
+        player.addAbility(Ability.Swing())
 
         // Give the player some starting skills:
         player.addSkill(Skill.Shield())
