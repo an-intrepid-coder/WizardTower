@@ -33,4 +33,18 @@ sealed class Ability(
         }
     )
     // TODO: Synchronize the above 3 in the combat system, once implemented.
+
+    class Swing : Ability(
+        name = "Swing",
+        effect = { game, caster, target ->
+            // TODO: Implement combat system
+        }
+    )
+
+    class Thrust : Ability(
+        name = "Thrust",
+        effect = { game, caster, target ->
+            // TODO: Implement combat system
+        }
+    )
 }
