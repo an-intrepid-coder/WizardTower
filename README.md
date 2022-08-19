@@ -5,4 +5,4 @@
 
 **Description**: A Roguelike where you are trying to get to the top of a Wizard's Tower. Will use a heavily-adapted version of the GURPS RPG system for most things.
 
-**Status and Roadmap**: Development resumed, with some changes in the design goals.
+**Status and Roadmap**: Development paused.
